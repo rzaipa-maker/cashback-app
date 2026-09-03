@@ -1,4 +1,4 @@
-const CACHE = 'cashback-v2';
+const CACHE = 'cashback-v3';
 const FILES = ['./cashback_navigator.html', './manifest.json'];
 
 self.addEventListener('install', e => {
