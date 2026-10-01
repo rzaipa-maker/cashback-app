@@ -1,0 +1,1952 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0f1117">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Кэшбек Навигатор</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #1a1d29;
+    --card-active: #22263a;
+    --accent: #4fd1c5;
+    --accent2: #f6ad55;
+    --danger: #f56565;
+    --success: #48bb78;
+    --text: #e6e6e6;
+    --muted: #9aa0b3;
+    --border: #2b2f42;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0;
+    -webkit-text-size-adjust: 100%;
+    touch-action: manipulation;
+    user-select: none;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Arial, sans-serif;
+    background: linear-gradient(160deg, #0f1117, #14172a);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: calc(60px + var(--safe-bottom));
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 12px; }
+
+  /* Tabs */
+  .tabs {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: rgba(15,17,23,0.96);
+    backdrop-filter: blur(10px);
+    padding: 8px 0;
+    margin: 0 -12px 12px;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex: 0 0 auto;
+    padding: 10px 20px;
+    border-radius: 20px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+    white-space: nowrap;
+    margin-left: 12px;
+  }
+  .tab:last-child { margin-right: 12px; }
+  .tab.active {
+    background: rgba(79,209,197,0.15);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  /* Tab content */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  h1 {
+    text-align: center;
+    font-size: clamp(1.15rem, 5vw, 1.6rem);
+    margin: 6px 0 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .subtitle { text-align: center; color: var(--muted); font-size: 0.85rem; margin-bottom: 14px; }
+  /* Search */
+  .search-box {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(15,17,23,0.94); backdrop-filter: blur(8px);
+    padding: 10px 0 12px; margin: 0 -12px; padding-left: 12px; padding-right: 12px;
+  }
+  .search-inputrow { position: relative; display: flex; align-items: center; }
+  #search {
+    width: 100%; padding: 14px 42px 14px 16px; font-size: 16px;
+    border-radius: 14px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); outline: none;
+    -webkit-appearance: none; appearance: none; user-select: text;
+  }
+  #search:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,209,197,0.15); }
+  #clearBtn {
+    position: absolute; right: 8px; width: 30px; height: 30px;
+    border-radius: 50%; background: var(--border); color: var(--text);
+    border: none; font-size: 16px; display: none; align-items: center;
+    justify-content: center; cursor: pointer;
+  }
+  #clearBtn.show { display: flex; }
+  .cat-scroll-label { color: var(--muted); font-size: 0.7rem; margin: 10px 0 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .suggestions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    max-height: calc(100vh - 140px);
+    transition: max-height 0.3s ease;
+    scrollbar-width: none;
+  }
+  .suggestions.compact {
+    max-height: 76px;
+    overflow-y: hidden;
+  }
+  .suggestions::-webkit-scrollbar { display: none; }
+  .chip {
+    flex: 0 0 auto; background: var(--card); border: 1px solid var(--border);
+    color: var(--muted); padding: 8px 14px; border-radius: 20px;
+    font-size: 0.8rem; cursor: pointer; white-space: nowrap;
+  }
+  .chip.active { background: rgba(79,209,197,0.15); color: var(--accent); border-color: var(--accent); }
+  /* Best banner */
+  .best-banner {
+    display: none; margin-top: 16px; padding: 16px 18px; border-radius: 16px;
+    background: linear-gradient(120deg, rgba(79,209,197,0.15), rgba(246,173,85,0.1));
+    border: 1px solid var(--accent);
+  }
+  .best-banner.show { display: block; }
+  .best-banner .label { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+  .best-banner .title { font-size: clamp(1.1rem,5vw,1.4rem); font-weight: 700; line-height: 1.3; }
+  .best-banner .title span.pct { color: var(--accent2); font-size: clamp(1.3rem,6vw,1.6rem); }
+  .best-banner .meta { color: var(--muted); font-size: 0.82rem; margin-top: 5px; }
+  .count-line { margin: 16px 0 10px; color: var(--muted); font-size: 0.82rem; }
+  .hint-line { color: var(--muted); font-size: 0.7rem; margin: -4px 0 12px; font-style: italic; }
+  /* Grid cards */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 10px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 12px 14px; position: relative; min-height: 90px; transition: transform .1s;
+  }
+  .card.pressing { transform: scale(0.96); border-color: var(--danger); }
+  .card.top { border-color: var(--accent2); box-shadow: 0 0 0 1px rgba(246,173,85,0.35); }
+  .card .pct { font-size: 1.5rem; font-weight: 800; color: var(--accent); }
+  .card.top .pct { color: var(--accent2); }
+  .card .cat { font-size: 0.88rem; font-weight: 600; margin-top: 2px; line-height: 1.25; }
+  .card .bank { margin-top: 8px; font-size: 0.78rem; color: var(--muted); line-height: 1.3; }
+  .card .bank b { color: var(--text); }
+  .card .note { margin-top: 5px; font-size: 0.68rem; color: var(--muted); font-style: italic; line-height: 1.3; }
+  .rank { position: absolute; top: 8px; right: 10px; font-size: 0.65rem; color: var(--muted); }
+  .empty { text-align: center; color: var(--muted); padding: 30px 10px; font-size: 0.9rem; }
+  .show-hidden-wrap { text-align: center; margin-top: 24px; }
+  #showHiddenBtn {
+    background: var(--card); border: 1px solid var(--border); color: var(--muted);
+    padding: 10px 20px; border-radius: 20px; font-size: 0.82rem; cursor: pointer;
+  }
+  #showHiddenBtn .badge {
+    background: var(--danger); color: #fff; border-radius: 10px;
+    padding: 1px 7px; font-size: 0.7rem; margin-left: 6px;
+  }
+  /* Import tab */
+  .section-title { font-size: 1rem; font-weight: 700; margin: 0 0 14px; color: var(--text); }
+  .owner-selector { display: flex; gap: 10px; margin-bottom: 18px; }
+  .owner-btn {
+    flex: 1; padding: 14px; border-radius: 14px; border: 2px solid var(--border);
+    background: var(--card); color: var(--muted); font-size: 0.9rem; font-weight: 600;
+    cursor: pointer; text-align: center; transition: all .15s;
+  }
+  .owner-btn.active-denis { border-color: var(--accent); color: var(--accent); background: rgba(79,209,197,0.1); }
+  .owner-btn.active-sasha { border-color: var(--accent2); color: var(--accent2); background: rgba(246,173,85,0.1); }
+  .upload-area {
+    border: 2px dashed var(--border); border-radius: 16px; padding: 28px 16px;
+    text-align: center; cursor: pointer; transition: border-color .15s; margin-bottom: 16px;
+  }
+  .upload-area:active, .upload-area.dragover { border-color: var(--accent); background: rgba(79,209,197,0.06); }
+  .upload-area .icon { font-size: 2.5rem; margin-bottom: 8px; }
+  .upload-area .hint { color: var(--muted); font-size: 0.85rem; line-height: 1.4; }
+  .upload-area .hint b { color: var(--text); }
+  .month-row { display: flex; gap: 10px; margin-bottom: 16px; }
+  .month-row select, .month-row input {
+    flex: 1; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); font-size: 0.9rem; outline: none;
+    -webkit-appearance: none; appearance: none;
+  }
+  .preview-list { margin-bottom: 16px; }
+  .preview-item {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 10px 14px; margin-bottom: 8px; font-size: 0.85rem;
+  }
+  .preview-item .pi-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .preview-item .pi-bank { font-weight: 700; color: var(--text); }
+  .preview-item .pi-owner { font-size: 0.75rem; padding: 3px 10px; border-radius: 10px; }
+  .pi-owner.denis { background: rgba(79,209,197,0.15); color: var(--accent); }
+  .pi-owner.sasha { background: rgba(246,173,85,0.15); color: var(--accent2); }
+  .preview-item .pi-cats { color: var(--muted); font-size: 0.8rem; line-height: 1.6; }
+  .preview-item .pi-status { font-size: 0.75rem; margin-top: 4px; }
+  .status-ok { color: var(--success); }
+  .status-err { color: var(--danger); }
+  .btn-primary {
+    width: 100%; padding: 16px; border-radius: 14px; border: none;
+    background: linear-gradient(90deg, var(--accent), #38b2ac); color: #0f1117;
+    font-size: 1rem; font-weight: 700; cursor: pointer; margin-bottom: 10px;
+  }
+  .btn-primary:disabled { opacity: 0.45; cursor: default; }
+  .btn-secondary {
+    width: 100%; padding: 14px; border-radius: 14px;
+    border: 1px solid var(--border); background: var(--card);
+    color: var(--text); font-size: 0.9rem; cursor: pointer; margin-bottom: 10px;
+  }
+  .thumb-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .thumb-wrap { position: relative; width: 80px; height: 80px; border-radius: 10px; overflow: hidden; }
+  .thumb-wrap img { width: 100%; height: 100%; object-fit: cover; }
+  .thumb-del {
+    position: absolute; top: 2px; right: 2px; width: 20px; height: 20px;
+    border-radius: 50%; background: rgba(0,0,0,0.7); color: #fff;
+    font-size: 12px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; border: none; line-height: 1;
+  }
+  .progress-bar { height: 4px; background: var(--border); border-radius: 4px; margin: 12px 0; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width .3s; width: 0%; }
+  /* Editor tab */
+  .editor-filters { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .filter-chip {
+    padding: 7px 14px; border-radius: 16px; border: 1px solid var(--border);
+    background: var(--card); color: var(--muted); font-size: 0.8rem; cursor: pointer;
+  }
+  .filter-chip.active { border-color: var(--accent); color: var(--accent); background: rgba(79,209,197,0.1); }
+  .editor-list { }
+  .editor-item {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px;
+  }
+  .editor-item .ei-info { flex: 1; min-width: 0; }
+  .editor-item .ei-pct { font-size: 1.2rem; font-weight: 800; color: var(--accent); width: 50px; text-align: right; flex-shrink: 0; }
+  .editor-item .ei-cat { font-size: 0.88rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .editor-item .ei-bank { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+  .editor-item .ei-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .icon-btn {
+    width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--card); color: var(--muted); font-size: 14px;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .icon-btn:active { background: var(--card-active); }
+  .icon-btn.danger:active { color: var(--danger); border-color: var(--danger); }
+  .fab {
+    position: fixed; bottom: calc(20px + var(--safe-bottom)); right: 20px;
+    width: 56px; height: 56px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #38b2ac);
+    color: #0f1117; font-size: 28px; border: none;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    box-shadow: 0 4px 20px rgba(79,209,197,0.4); z-index: 15;
+  }
+  /* Settings tab */
+  .settings-group { margin-bottom: 24px; }
+  .settings-label { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .settings-input {
+    width: 100%; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); font-size: 0.9rem; outline: none;
+    user-select: text; -webkit-user-select: text; margin-bottom: 8px;
+  }
+  .settings-input:focus { border-color: var(--accent); }
+  .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-row .sr-label { font-size: 0.9rem; }
+  .settings-row .sr-val { color: var(--muted); font-size: 0.85rem; }
+  .badge-count { background: var(--accent); color: #0f1117; border-radius: 10px; padding: 2px 8px; font-size: 0.75rem; font-weight: 700; }
+  /* Overlay & sheet */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 100; align-items: flex-end; justify-content: center; }
+  .overlay.show { display: flex; }
+  .sheet {
+    width: 100%; max-width: 480px; background: var(--card);
+    border-radius: 18px 18px 0 0; padding: 8px 8px calc(16px + var(--safe-bottom));
+    animation: slideUp .18s ease-out; max-height: 90vh; overflow-y: auto;
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .sheet-title { padding: 14px 16px 8px; color: var(--muted); font-size: 0.82rem; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+  .sheet-title b { color: var(--text); display: block; font-size: 0.95rem; margin-bottom: 2px; }
+  .sheet-btn { width: 100%; text-align: center; background: none; border: none; color: var(--text); font-size: 1rem; padding: 15px; border-radius: 12px; cursor: pointer; }
+  .sheet-btn:active { background: var(--card-active); }
+  .sheet-btn.danger { color: var(--danger); }
+  .sheet-btn.cancel { color: var(--muted); margin-top: 4px; }
+  .form-group { padding: 8px 16px; }
+  .form-group label { display: block; color: var(--muted); font-size: 0.78rem; margin-bottom: 6px; }
+  .form-input {
+    width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font-size: 0.9rem; outline: none;
+    user-select: text; -webkit-user-select: text;
+  }
+  .form-input:focus { border-color: var(--accent); }
+  .hidden-list-item { display: flex; align-items: center; justify-content: space-between; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; font-size: 0.85rem; }
+  .restore-btn { background: rgba(79,209,197,0.15); color: var(--accent); border: 1px solid var(--accent); border-radius: 16px; padding: 6px 12px; font-size: 0.78rem; cursor: pointer; }
+  .info-msg { text-align: center; padding: 20px; color: var(--muted); font-size: 0.88rem; }
+  .import-mode-btn {
+    flex: 1; padding: 10px; border-radius: 20px;
+    background: var(--card); border: 1px solid var(--border);
+    color: var(--muted); font-size: 0.85rem; cursor: pointer; white-space: nowrap;
+  }
+  .import-mode-btn.active {
+    background: rgba(79,209,197,0.15); color: var(--accent); border-color: var(--accent);
+  }
+  .import-panel { display: none; }
+  .import-panel.active { display: block; }
+  .bank-card { background:var(--card); border:1px solid var(--border); border-radius:14px; margin-bottom:10px; overflow:hidden; }
+  .bank-card-header { display:flex; justify-content:space-between; align-items:center; padding:14px 16px; cursor:pointer; }
+  .bank-card-header:active { background:var(--card-active); }
+  .bank-card-body { padding:0 16px 10px; }
+  .bank-cat-row { display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--border); }
+  .bank-cat-row:last-child { border-bottom:none; }
+  .bank-filters { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+  .bank-owner-tag { font-size:0.72rem; padding:3px 10px; border-radius:10px; }
+  .bank-owner-tag.denis { background:rgba(79,209,197,0.15); color:var(--accent); }
+  .bank-owner-tag.sasha { background:rgba(246,173,85,0.15); color:var(--accent2); }
+  .period-indicator {
+    text-align:center; color:var(--muted); font-size:0.72rem;
+    margin: -4px 0 8px; letter-spacing:0.03em;
+  }
+  .period-indicator b { color:var(--accent); font-weight:600; }
+  .monthly-help {
+    color:var(--muted); font-size:0.78rem; line-height:1.45;
+    padding:10px 12px; margin:0 0 14px; border:1px solid var(--border);
+    border-radius:10px; background:rgba(79,209,197,0.04);
+  }
+  @media (min-width:600px) {
+    .grid { grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 12px; }
+    .card { padding: 14px 16px; }
+    .card .pct { font-size: 1.8rem; }
+  }
+  @media (hover:hover) {
+    .chip:hover { background: var(--card-active); color: var(--accent); border-color: var(--accent); }
+    .card:hover { border-color: var(--accent); }
+    .owner-btn:hover { border-color: var(--accent); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="tabs" id="tabsBar">
+    <div class="tab active" data-tab="search">🔍 Поиск</div>
+    <div class="tab" data-tab="import">📷 Импорт</div>
+    <div class="tab" data-tab="editor">✏️ Редактор</div>
+    <div class="tab" data-tab="banks">🏦 Банки</div>
+    <div class="tab" data-tab="settings">⚙️ Настройки</div>
+  </div>
+
+  <!-- ===== ПОИСК ===== -->
+  <div id="tab-search" class="tab-content active">
+    <div class="period-indicator" id="periodIndicator"></div>
+    <div class="search-box">
+      <div class="search-inputrow">
+        <input id="search" type="search" inputmode="search" placeholder="Категория: рестораны, такси, ремонт..." autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button id="clearBtn" aria-label="Очистить">×</button>
+      </div>
+      <div class="suggestions" id="suggestions"></div>
+    </div>
+    <div class="best-banner" id="bestBanner">
+      <div class="label">Лучший вариант</div>
+      <div class="title"><span class="pct" id="bestPct"></span> — <span id="bestBank"></span></div>
+      <div class="meta" id="bestMeta"></div>
+    </div>
+    <div class="count-line" id="countLine"></div>
+    <div class="hint-line" id="hintLine" style="display:none;">Удерживайте карточку, чтобы убрать её из этой категории</div>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="emptyState" style="display:none;">Ничего не найдено. Попробуйте другой запрос.</div>
+    <div class="show-hidden-wrap">
+      <button id="showHiddenBtn">Показать скрытые<span class="badge" id="hiddenBadge" style="display:none;">0</span></button>
+    </div>
+    <footer id="footerLine">Кэшбек-навигатор</footer>
+  </div>
+
+  <!-- ===== ИМПОРТ ===== -->
+  <div id="tab-import" class="tab-content">
+    <div class="period-indicator" id="importTabPeriodIndicator"></div>
+    <div class="monthly-help">Каждый месяц добавляй только новые категории. В ручном или текстовом импорте включай «Заменить месячные категории» для каждого банка — постоянные категории 🔒 сохранятся автоматически.</div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+      <button class="import-mode-btn" id="importModeAuto" onclick="switchImportMode('auto')">📷 Скрины (Claude AI)</button>
+      <button class="import-mode-btn active" id="importModeManual" onclick="switchImportMode('manual')">✍️ Ручной ввод</button>
+      <button class="import-mode-btn" id="importModeText" onclick="switchImportMode('text')">📄 Текст / JSON</button>
+    </div>
+
+    <!-- РУЧНОЙ ВВОД -->
+    <div id="manualImportForm" class="import-panel active">
+      <p class="section-title">✍️ Быстрый ввод категорий банка</p>
+      <div class="settings-label">1. Банк</div>
+      <select id="manualBank" class="settings-input" style="margin-bottom:10px;">
+        <option value="">— Выбери банк —</option>
+      </select>
+      <button class="btn-secondary" onclick="addCustomBank()" style="margin-bottom:16px;">+ Добавить свой банк</button>
+
+      <div class="settings-label">2. Владелец</div>
+      <div class="owner-selector">
+        <div class="owner-btn" id="manualOwnerDenis" onclick="selectManualOwner('Денис')">👨 Денис</div>
+        <div class="owner-btn" id="manualOwnerSasha" onclick="selectManualOwner('Саша')">👩 Саша</div>
+      </div>
+
+      <div class="settings-label">3. Категории с кэшбеком</div>
+      <p style="color:var(--muted);font-size:0.8rem;margin:-4px 0 8px;">Отметь категории и укажи проценты</p>
+      <input type="search" id="catSearch" class="settings-input" placeholder="🔍 Поиск категории..." style="margin-bottom:10px;" oninput="renderManualCategories()">
+      <div id="manualCatList" style="max-height:400px;overflow-y:auto;margin-bottom:12px;"></div>
+      <button class="btn-secondary" onclick="addCustomCategory()" style="margin-bottom:16px;">+ Добавить новую категорию</button>
+
+      <div class="settings-label">4. Общее примечание (необязательно)</div>
+      <input class="settings-input" id="manualNote" placeholder="до 23.08, с подпиской Premium...">
+
+      <div style="display:flex;align-items:center;gap:10px;margin-top:14px;padding:12px;background:var(--card);border-radius:12px;border:1px solid var(--border);">
+        <input type="checkbox" id="replaceMode" style="width:18px;height:18px;cursor:pointer;flex-shrink:0;">
+        <label for="replaceMode" style="cursor:pointer;user-select:none;font-size:0.88rem;line-height:1.3;">
+          <b>Заменить существующие записи</b><br>
+          <span style="color:var(--muted);font-size:0.78rem;">Заменить месячные категории этого банка за текущий месяц</span>
+        </label>
+      </div>
+
+      <button class="btn-primary" onclick="submitManualImport()" style="margin-top:16px;">✅ Добавить выбранные категории</button>
+    </div>
+
+    <!-- АВТОМАТИЧЕСКИЙ ИМПОРТ (GEMINI) -->
+    <div id="autoImportForm" class="import-panel">
+    <p class="section-title">📷 Импорт из скринов банков</p>
+    <p style="color:var(--muted);font-size:0.85rem;margin-bottom:16px;line-height:1.5;">
+      Загрузи скрины из приложений банков. ИИ автоматически распознает банк, категории и проценты кэшбека.
+    </p>
+    <div class="settings-label">1. Чьи карты на скринах?</div>
+    <div class="owner-selector">
+      <div class="owner-btn" id="ownerDenis" onclick="selectOwner('Денис')">👨 Денис</div>
+      <div class="owner-btn" id="ownerSasha" onclick="selectOwner('Саша')">👩 Саша</div>
+    </div>
+    <div class="settings-label">2. Текущий месяц</div>
+    <div class="period-indicator" id="importPeriodIndicator" style="text-align:left;margin:0 0 16px;"></div>
+    <div class="settings-label" style="display:none;">Месяц и год</div>
+    <div class="month-row" style="display:none;">
+      <select id="importMonth"><option value="">Текущий месяц</option></select>
+      <input type="number" id="importYear" value="2026" style="max-width:90px;">
+    </div>
+    <div class="settings-label">3. Загрузи скрины</div>
+    <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+      <div class="icon">📁</div>
+      <div class="hint"><b>Нажми для выбора</b><br>или перетащи скрины сюда<br><span style="font-size:0.75rem;opacity:0.7;">JPG, PNG — можно несколько сразу</span></div>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" multiple style="display:none">
+    <div class="thumb-grid" id="thumbGrid"></div>
+    <div class="progress-bar" id="progressBar" style="display:none"><div class="progress-fill" id="progressFill"></div></div>
+    <div id="importLog" style="color:var(--muted);font-size:0.8rem;margin-bottom:10px;min-height:20px;"></div>
+    <button class="btn-primary" id="recognizeBtn" disabled onclick="runRecognition()">🤖 Распознать через Claude AI</button>
+    <div class="preview-list" id="previewList"></div>
+    <button class="btn-primary" id="confirmImportBtn" style="display:none;background:linear-gradient(90deg,var(--success),#38a169);" onclick="confirmImport()">✅ Применить импорт</button>
+    <button class="btn-secondary" id="clearImportBtn" style="display:none;" onclick="clearImport()">Очистить</button>
+    </div><!-- /autoImportForm -->
+
+    <!-- ТЕКСТОВЫЙ ИМПОРТ -->
+    <div id="textImportForm" class="import-panel">
+      <p class="section-title">📄 Импорт из текста / JSON</p>
+      <p style="color:var(--muted);font-size:0.85rem;margin-bottom:12px;line-height:1.5;">
+        Сделай скрин из банка, отправь в любой AI (ChatGPT, Claude.ai, Gemini) с промптом ниже — и вставь ответ сюда.
+      </p>
+      <details style="margin-bottom:16px;">
+        <summary style="cursor:pointer;color:var(--accent);font-size:0.85rem;padding:8px 0;">📋 Показать промпт для AI</summary>
+        <div id="promptBox" style="margin-top:10px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;font-size:0.8rem;color:var(--muted);line-height:1.6;white-space:pre-wrap;user-select:text;-webkit-user-select:text;"></div>
+        <button class="btn-secondary" onclick="copyPrompt()" style="margin-top:8px;">📋 Копировать промпт</button>
+      </details>
+      <div class="settings-label">Вставь ответ AI сюда</div>
+      <textarea id="textImportArea" style="width:100%;min-height:180px;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:0.85rem;line-height:1.5;resize:vertical;outline:none;user-select:text;-webkit-user-select:text;" placeholder='Вставь JSON или текст в формате:
+
+Банк: Альфа
+Владелец: Денис
+- Рестораны 7%
+- Такси 5% (до 23.08)
+
+Банк: Сбер
+Владелец: Саша
+- Транспорт 10%
+- Такси 5%'></textarea>
+      <div style="display:flex;align-items:center;gap:10px;margin:12px 0;padding:12px;background:var(--card);border-radius:12px;border:1px solid var(--border);">
+        <input type="checkbox" id="textReplaceMode" style="width:18px;height:18px;cursor:pointer;flex-shrink:0;">
+        <label for="textReplaceMode" style="cursor:pointer;user-select:none;font-size:0.88rem;line-height:1.3;">
+          <b>Заменить существующие записи</b><br>
+          <span style="color:var(--muted);font-size:0.78rem;">Заменить месячные категории за текущий месяц; постоянные 🔒 сохранятся</span>
+        </label>
+      </div>
+      <button class="btn-primary" onclick="parseAndPreview()">🔍 Разобрать и показать предпросмотр</button>
+      <div class="preview-list" id="textPreviewList" style="margin-top:14px;"></div>
+      <button class="btn-primary" id="textConfirmBtn" style="display:none;background:linear-gradient(90deg,var(--success),#38a169);" onclick="confirmTextImport()">✅ Применить импорт</button>
+      <button class="btn-secondary" id="textClearBtn" style="display:none;" onclick="clearTextImport()">Очистить</button>
+    </div><!-- /textImportForm -->
+
+  </div><!-- /tab-import -->
+
+  <!-- ===== РЕДАКТОР ===== -->
+  <div id="tab-editor" class="tab-content">
+    <p class="section-title">✏️ Редактор карт</p>
+    <div class="editor-filters" id="editorFilters">
+      <div class="filter-chip active" data-filter="all">Все</div>
+      <div class="filter-chip" data-filter="Денис">Денис</div>
+      <div class="filter-chip" data-filter="Саша">Саша</div>
+    </div>
+    <div class="editor-list" id="editorList"></div>
+    <div class="empty" id="editorEmpty" style="display:none;">Нет карт для отображения</div>
+    <button class="fab" onclick="openAddCard()">+</button>
+  </div>
+
+  <!-- ===== БАНКИ ===== -->
+  <div id="tab-banks" class="tab-content">
+    <p class="section-title">🏦 Банки и категории</p>
+    <div class="bank-filters">
+      <div class="filter-chip active" data-bfilter="all" onclick="setBankFilter('all',this)">Все</div>
+      <div class="filter-chip" data-bfilter="Денис" onclick="setBankFilter('Денис',this)">👨 Денис</div>
+      <div class="filter-chip" data-bfilter="Саша" onclick="setBankFilter('Саша',this)">👩 Саша</div>
+    </div>
+    <div id="banksContainer"></div>
+  </div>
+
+  <!-- ===== НАСТРОЙКИ ===== -->
+  <div id="tab-settings" class="tab-content">
+    <p class="section-title">⚙️ Настройки</p>
+    <div class="settings-group">
+      <div class="settings-label">AI для распознавания скринов</div>
+      <label style="color:var(--muted);font-size:0.8rem;display:block;margin-bottom:4px;">Base URL (эндпоинт)</label>
+      <input type="text" id="aiBaseUrl" class="settings-input" placeholder="https://cc.freemodel.dev">
+      <label style="color:var(--muted);font-size:0.8rem;display:block;margin-bottom:4px;">API ключ</label>
+      <input type="password" id="aiApiKey" class="settings-input" placeholder="fe_oa_...">
+      <label style="color:var(--muted);font-size:0.8rem;display:block;margin-bottom:4px;">Модель</label>
+      <select id="aiModel" class="settings-input" style="margin-bottom:8px;">
+        <option value="claude-opus-5" selected>claude-opus-5 (самый мощный)</option>
+        <option value="claude-sonnet-5">claude-sonnet-5 (быстрее)</option>
+        <option value="claude-haiku-4-5">claude-haiku-4-5 (экономнее)</option>
+      </select>
+      <button class="btn-secondary" onclick="saveAiSettings()">Сохранить настройки AI</button>
+      <p style="font-size:0.75rem;color:var(--muted);line-height:1.5;margin-top:8px;">
+        Ключ хранится только локально на устройстве.<br>
+        Нужен только для вкладки «📷 Скрины».
+      </p>
+    </div>
+    <div class="settings-group">
+      <div class="settings-label">Текущий период</div>
+      <div class="settings-row">
+        <div class="sr-label">Месяц</div>
+        <div class="sr-val" id="currentMonthDisplay">Текущий месяц</div>
+      </div>
+    </div>
+    <div class="settings-group">
+      <div class="settings-label">Данные</div>
+      <div class="settings-row" style="cursor:pointer;" onclick="exportData()">
+        <div class="sr-label">💾 Экспорт данных</div>
+        <div class="sr-val badge-count" id="dataCount">0</div>
+      </div>
+      <div class="settings-row" style="cursor:pointer;" onclick="importData()">
+        <div class="sr-label">📥 Импорт данных</div>
+        <div class="sr-val">JSON файл</div>
+      </div>
+      <div class="settings-row" style="cursor:pointer;" onclick="resetToDefault()">
+        <div class="sr-label" style="color:var(--danger);">🔄 Сбросить к умолчанию</div>
+      </div>
+    </div>
+    <div class="settings-group">
+      <div class="settings-label">Скрытые карты</div>
+      <div class="settings-row" style="cursor:pointer;" onclick="clearHidden()">
+        <div class="sr-label">Очистить скрытые</div>
+        <div class="sr-val badge-count" id="hiddenCount">0</div>
+      </div>
+    </div>
+    <footer>Версия 2.0 · PWA</footer>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<script src="./cashback_data.js"></script>
+<script>
+// ============================================================
+//  LEGACY DEFAULT DATA — used only for permanent KEB records
+// ============================================================
+const LEGACY_DEFAULT_DATA = [
+  {"bank":"МКБ","owner":"Денис","category":"Путешествия","percent":10,"note":"","id":0},
+  {"bank":"МКБ","owner":"Денис","category":"Фастфуд","percent":5,"note":"","id":1},
+  {"bank":"МКБ","owner":"Денис","category":"Образование","percent":5,"note":"","id":2},
+  {"bank":"Инго-Банк","owner":"Денис","category":"Супермаркеты","percent":5,"note":"1,5% без подписки","id":3},
+  {"bank":"Инго-Банк","owner":"Денис","category":"Электроника","percent":7,"note":"5% без подписки","id":4},
+  {"bank":"Инго-Банк","owner":"Денис","category":"Автозапчасти","percent":7,"note":"5% без подписки","id":5},
+  {"bank":"Инго-Банк","owner":"Денис","category":"Цветы","percent":10,"note":"5% без подписки","id":6},
+  {"bank":"ТБанк","owner":"Денис","category":"Пятёрочка в Городе","percent":17,"note":"","id":7},
+  {"bank":"ТБанк","owner":"Денис","category":"Ж/д билеты","percent":5,"note":"","id":8},
+  {"bank":"ТБанк","owner":"Денис","category":"Развлечения","percent":5,"note":"","id":9},
+  {"bank":"ТБанк","owner":"Денис","category":"Такси","percent":5,"note":"","id":10},
+  {"bank":"ВТБ","owner":"Денис","category":"Zolla","percent":20,"note":"при покупке от 5000 ₽","id":11},
+  {"bank":"ВТБ","owner":"Денис","category":"Магнит в ВТБ Онлайн","percent":15,"note":"при заказе от 2000 ₽","id":12},
+  {"bank":"ВТБ","owner":"Денис","category":"Яндекс Лавка","percent":20,"note":"оплата картой МИР","id":13},
+  {"bank":"Альфа-Банк","owner":"Денис","category":"Аренда авто","percent":7,"note":"","id":14},
+  {"bank":"Альфа-Банк","owner":"Денис","category":"Такси","percent":7,"note":"зарплатным клиентам","id":15},
+  {"bank":"Альфа-Банк","owner":"Денис","category":"Активный отдых","percent":7,"note":"","id":16},
+  {"bank":"Альфа-Банк","owner":"Денис","category":"Транспорт","percent":7,"note":"","id":17},
+  {"bank":"Альфа-Банк","owner":"Денис","category":"Образование","percent":7,"note":"","id":18},
+  {"bank":"Альфа-Банк","owner":"Денис","category":"Спортивные товары","percent":7,"note":"","id":19},
+  {"bank":"Альфа-Бизнес","owner":"Денис","category":"Одежда и обувь","percent":10,"note":"","id":20},
+  {"bank":"Альфа-Бизнес","owner":"Денис","category":"АЗС","percent":10,"note":"","id":21},
+  {"bank":"Альфа-Бизнес","owner":"Денис","category":"Книги","percent":10,"note":"","id":22},
+  {"bank":"Альфа-Бизнес","owner":"Денис","category":"Алкоголь","percent":10,"note":"","id":23},
+  {"bank":"Альфа-Бизнес","owner":"Денис","category":"Образование","percent":10,"note":"","id":24},
+  {"bank":"Яндекс","owner":"Денис","category":"Самокаты Яндекс Go","percent":10,"note":"","id":25},
+  {"bank":"Яндекс","owner":"Денис","category":"Все покупки","percent":2,"note":"","id":26},
+  {"bank":"Яндекс","owner":"Денис","category":"Цветы","percent":10,"note":"","id":27},
+  {"bank":"Яндекс","owner":"Денис","category":"Супермаркеты","percent":5,"note":"","id":28},
+  {"bank":"Яндекс","owner":"Денис","category":"Одежда и обувь","percent":7,"note":"","id":29},
+  {"bank":"Яндекс","owner":"Денис","category":"Яндекс Такси","percent":10,"note":"","id":30},
+  {"bank":"УБРиР","owner":"Денис","category":"Оплата ЖКУ","percent":5,"note":"","id":31},
+  {"bank":"УБРиР","owner":"Денис","category":"Книги","percent":5,"note":"","id":32},
+  {"bank":"УБРиР","owner":"Денис","category":"Автомойки","percent":5,"note":"","id":33},
+  {"bank":"УБРиР","owner":"Денис","category":"Супермаркеты","percent":3,"note":"","id":34},
+  {"bank":"УБРиР","owner":"Денис","category":"Онлайн-покупки","percent":10,"note":"с подпиской","id":35},
+  {"bank":"Срвкомбанк","owner":"Денис","category":"Фото, Видео","percent":30,"note":"","id":36},
+  {"bank":"Срвкомбанк","owner":"Денис","category":"Цветы","percent":8,"note":"","id":37},
+  {"bank":"Срвкомбанк","owner":"Денис","category":"Путешествия","percent":4,"note":"","id":38},
+  {"bank":"Срвкомбанк","owner":"Денис","category":"Красота","percent":6,"note":"","id":39},
+  {"bank":"Срвкомбанк","owner":"Денис","category":"Ювелирные изделия","percent":4,"note":"","id":40},
+  {"bank":"Сбербанк","owner":"Денис","category":"Кафе и рестораны","percent":4,"note":"со СберПрайм","id":41},
+  {"bank":"Сбербанк","owner":"Денис","category":"Медицинские услуги","percent":2,"note":"со СберПрайм","id":42},
+  {"bank":"Сбербанк","owner":"Денис","category":"Спортивные товары","percent":10,"note":"со СберПрайм","id":43},
+  {"bank":"Сбербанк","owner":"Денис","category":"Супермаркеты","percent":2,"note":"со СберПрайм","id":44},
+  {"bank":"Сбербанк","owner":"Денис","category":"Транспорт","percent":10,"note":"со СберПрайм","id":45},
+  {"bank":"РСХБ","owner":"Денис","category":"Автозапчасти","percent":5,"note":"","id":46},
+  {"bank":"РСХБ","owner":"Денис","category":"Автоуслуги","percent":5,"note":"","id":47},
+  {"bank":"РСХБ","owner":"Денис","category":"Детские товары","percent":5,"note":"","id":48},
+  {"bank":"РСХБ","owner":"Денис","category":"Искусство","percent":5,"note":"","id":49},
+  {"bank":"РСХБ","owner":"Денис","category":"Маркетплейсы","percent":5,"note":"","id":50},
+  {"bank":"ОЗОН","owner":"Денис","category":"Развлечения","percent":5,"note":"","id":51},
+  {"bank":"ОЗОН","owner":"Денис","category":"Электроника и бытовая техника","percent":5,"note":"","id":52},
+  {"bank":"ОЗОН","owner":"Денис","category":"Яндекс Лавка","percent":7,"note":"","id":53},
+  {"bank":"ОЗОН","owner":"Денис","category":"Перекрёсток Доставка","percent":10,"note":"","id":54},
+  {"bank":"ПСБ","owner":"Денис","category":"Кафе и рестораны","percent":5,"note":"","id":55},
+  {"bank":"ПСБ","owner":"Денис","category":"Мед. центры","percent":3,"note":"","id":56},
+  {"bank":"ПСБ","owner":"Денис","category":"Авиа билеты","percent":2,"note":"","id":57},
+  {"bank":"ПСБ","owner":"Денис","category":"Прочие покупки","percent":1,"note":"","id":58},
+  {"bank":"ОТП","owner":"Денис","category":"Прокат авто и каршеринг","percent":5,"note":"","id":59},
+  {"bank":"ОТП","owner":"Денис","category":"Цифровые товары","percent":5,"note":"","id":60},
+  {"bank":"ОТП","owner":"Денис","category":"Автоуслуги","percent":5,"note":"","id":61},
+  {"bank":"ОТП","owner":"Денис","category":"Фастфуд","percent":5,"note":"","id":62},
+  {"bank":"МТС","owner":"Денис","category":"Супермаркеты","percent":5,"note":"с подпиской Premium","id":63},
+  {"bank":"МТС","owner":"Денис","category":"Фастфуд","percent":5,"note":"","id":64},
+  {"bank":"МТС","owner":"Денис","category":"Дом и ремонт","percent":5,"note":"","id":65},
+  {"bank":"МТС","owner":"Денис","category":"Здоровье","percent":5,"note":"","id":66},
+  {"bank":"МТС","owner":"Денис","category":"ЖКХ","percent":5,"note":"","id":67},
+  {"bank":"МТС","owner":"Денис","category":"Топливо и АЗС","percent":5,"note":"","id":68},
+  {"bank":"Т Банк","owner":"Саша","category":"Отели в Т Путешествиях","percent":12,"note":"","id":69},
+  {"bank":"Т Банк","owner":"Саша","category":"Афиша в Городе","percent":21,"note":"","id":70},
+  {"bank":"Т Банк","owner":"Саша","category":"Аптеки","percent":5,"note":"","id":71},
+  {"bank":"Т Банк","owner":"Саша","category":"Каршеринг","percent":5,"note":"","id":72},
+  {"bank":"Альфа","owner":"Саша","category":"За все покупки","percent":2.5,"note":"","id":73},
+  {"bank":"Альфа","owner":"Саша","category":"Альфа Тревел","percent":7,"note":"","id":74},
+  {"bank":"Альфа","owner":"Саша","category":"Красота","percent":7,"note":"","id":75},
+  {"bank":"Альфа","owner":"Саша","category":"Аптеки","percent":14,"note":"","id":76},
+  {"bank":"Альфа","owner":"Саша","category":"Развлечения","percent":7,"note":"","id":77},
+  {"bank":"МТС","owner":"Саша","category":"Здоровье","percent":5,"note":"","id":78},
+  {"bank":"МТС","owner":"Саша","category":"Супермаркеты","percent":4,"note":"","id":79},
+  {"bank":"МТС","owner":"Саша","category":"Фастфуд и рестораны","percent":4,"note":"","id":80},
+  {"bank":"МТС","owner":"Саша","category":"Искусство","percent":5,"note":"","id":81},
+  {"bank":"МТС","owner":"Саша","category":"Фото Видео","percent":4,"note":"","id":82},
+  {"bank":"Яндекс","owner":"Саша","category":"Все покупки","percent":1,"note":"","id":83},
+  {"bank":"Яндекс","owner":"Саша","category":"Одежда и обувь","percent":5,"note":"","id":84},
+  {"bank":"Яндекс","owner":"Саша","category":"Комфорт","percent":7,"note":"","id":85},
+  {"bank":"Яндекс","owner":"Саша","category":"Комфорт Плюс","percent":7,"note":"","id":86},
+  {"bank":"Яндекс","owner":"Саша","category":"Ultima","percent":7,"note":"","id":87},
+  {"bank":"Яндекс","owner":"Саша","category":"Алиса Плюс","percent":100,"note":"","id":88},
+  {"bank":"Яндекс","owner":"Саша","category":"Яндекс Еда и Деливери","percent":50,"note":"","id":89},
+  {"bank":"Яндекс","owner":"Саша","category":"Яндекс Путешествия","percent":5,"note":"","id":90},
+  {"bank":"ВТБ","owner":"Саша","category":"Zolla","percent":20,"note":"","id":91},
+  {"bank":"ВТБ","owner":"Саша","category":"Магнит в ВТБ Онлайн","percent":15,"note":"","id":92},
+  {"bank":"ВТБ","owner":"Саша","category":"Wildberries","percent":3,"note":"","id":93},
+  {"bank":"Ингобанк","owner":"Саша","category":"Супермаркеты 1","percent":5,"note":"","id":94},
+  {"bank":"Ингобанк","owner":"Саша","category":"Красота","percent":5,"note":"","id":95},
+  {"bank":"Ингобанк","owner":"Саша","category":"Электроника","percent":5,"note":"","id":96},
+  {"bank":"Альфа Бизнес","owner":"Саша","category":"Книги","percent":10,"note":"","id":97},
+  {"bank":"Альфа Бизнес","owner":"Саша","category":"Такси","percent":10,"note":"","id":98},
+  {"bank":"Альфа Бизнес","owner":"Саша","category":"Образование","percent":10,"note":"","id":99},
+  {"bank":"Альфа Бизнес","owner":"Саша","category":"Интернет магазин Комус","percent":15,"note":"","id":100},
+  {"bank":"Альфа Бизнес","owner":"Саша","category":"Перекрёсток","percent":20,"note":"","id":101},
+  {"bank":"Альфа Бизнес","owner":"Саша","category":"Одежда и обувь","percent":5,"note":"","id":102},
+  {"bank":"Альфа Бизнес","owner":"Саша","category":"АЗС","percent":5,"note":"","id":103},
+  {"bank":"Сбербанк","owner":"Саша","category":"Кино и театр","percent":5,"note":"","id":104},
+  {"bank":"Сбербанк","owner":"Саша","category":"Парфюмерия и косметика","percent":5,"note":"","id":105},
+  {"bank":"Сбербанк","owner":"Саша","category":"Спорт и фитнес","percent":10,"note":"","id":106},
+  {"bank":"Сбербанк","owner":"Саша","category":"Товары для детей","percent":5,"note":"","id":107},
+  {"bank":"Сбербанк","owner":"Саша","category":"Транспорт","percent":10,"note":"","id":108},
+  {"bank":"ОЗОН","owner":"Саша","category":"Электроника и бытовая техника","percent":5,"note":"","id":109},
+  {"bank":"ОЗОН","owner":"Саша","category":"Перекрёсток Доставка","percent":10,"note":"","id":110},
+  {"bank":"ОЗОН","owner":"Саша","category":"Дикси","percent":14,"note":"","id":111},
+  {"bank":"ОЗОН","owner":"Саша","category":"Музыка","percent":25,"note":"","id":112},
+  {"bank":"Совкомбанк","owner":"Саша","category":"Путешествия","percent":30,"note":"","id":113},
+  {"bank":"Совкомбанк","owner":"Саша","category":"Образование","percent":6,"note":"","id":114},
+  {"bank":"Совкомбанк","owner":"Саша","category":"Детские товары","percent":5,"note":"","id":115},
+  {"bank":"Совкомбанк","owner":"Саша","category":"Фото Видео","percent":10,"note":"","id":116},
+  {"bank":"Совкомбанк","owner":"Саша","category":"Цветы","percent":8,"note":"","id":117},
+  {"bank":"КЕБ URBAN","owner":"Денис","category":"Общественный транспорт","percent":10,"note":"","permanent":true,"id":118},
+  {"bank":"КЕБ URBAN","owner":"Денис","category":"АЗС","percent":5,"note":"","permanent":true,"id":119},
+  {"bank":"КЕБ URBAN","owner":"Денис","category":"Автомойки","percent":5,"note":"","permanent":true,"id":120},
+  {"bank":"КЕБ URBAN","owner":"Денис","category":"Такси","percent":5,"note":"","permanent":true,"id":121},
+  {"bank":"КЕБ URBAN","owner":"Денис","category":"Платные дороги","percent":5,"note":"","permanent":true,"id":122},
+  {"bank":"КЕБ URBAN","owner":"Денис","category":"Каршеринг","percent":5,"note":"","permanent":true,"id":123},
+  {"bank":"КЕБ URBAN","owner":"Денис","category":"Шиномонтаж","percent":5,"note":"","permanent":true,"id":124},
+  {"bank":"КЕБ URBAN","owner":"Саша","category":"Общественный транспорт","percent":10,"note":"","permanent":true,"id":125},
+  {"bank":"КЕБ URBAN","owner":"Саша","category":"АЗС","percent":5,"note":"","permanent":true,"id":126},
+  {"bank":"КЕБ URBAN","owner":"Саша","category":"Автомойки","percent":5,"note":"","permanent":true,"id":127},
+  {"bank":"КЕБ URBAN","owner":"Саша","category":"Такси","percent":5,"note":"","permanent":true,"id":128},
+  {"bank":"КЕБ URBAN","owner":"Саша","category":"Платные дороги","percent":5,"note":"","permanent":true,"id":129},
+  {"bank":"КЕБ URBAN","owner":"Саша","category":"Каршеринг","percent":5,"note":"","permanent":true,"id":130},
+  {"bank":"КЕБ URBAN","owner":"Саша","category":"Шиномонтаж","percent":5,"note":"","permanent":true,"id":131},
+  {"bank":"КЕБ CARD CREDIT PLUS","owner":"Денис","category":"Развлечения","percent":7,"note":"","permanent":true,"id":132},
+  {"bank":"КЕБ CARD CREDIT PLUS","owner":"Денис","category":"Одежда и обувь","percent":4,"note":"","permanent":true,"id":133},
+  {"bank":"КЕБ CARD CREDIT PLUS","owner":"Денис","category":"Кафе и рестораны","percent":4,"note":"","permanent":true,"id":134},
+  {"bank":"КЕБ CARD CREDIT PLUS","owner":"Денис","category":"Красота","percent":4,"note":"","permanent":true,"id":135},
+  {"bank":"КЕБ CARD CREDIT PLUS","owner":"Денис","category":"Экосистема Яндекс","percent":2,"note":"","permanent":true,"id":136},
+  {"bank":"КЕБ CARD CREDIT PLUS","owner":"Денис","category":"Экосистема Сбер","percent":2,"note":"","permanent":true,"id":137},
+  {"bank":"КЕБ CARD CREDIT PLUS","owner":"Саша","category":"Развлечения","percent":7,"note":"","permanent":true,"id":138},
+  {"bank":"КЕБ CARD CREDIT PLUS","owner":"Саша","category":"Одежда и обувь","percent":4,"note":"","permanent":true,"id":139},
+  {"bank":"КЕБ CARD CREDIT PLUS","owner":"Саша","category":"Кафе и рестораны","percent":4,"note":"","permanent":true,"id":140},
+  {"bank":"КЕБ CARD CREDIT PLUS","owner":"Саша","category":"Красота","percent":4,"note":"","permanent":true,"id":141},
+  {"bank":"КЕБ CARD CREDIT PLUS","owner":"Саша","category":"Экосистема Яндекс","percent":2,"note":"","permanent":true,"id":142},
+  {"bank":"КЕБ CARD CREDIT PLUS","owner":"Саша","category":"Экосистема Сбер","percent":2,"note":"","permanent":true,"id":143},
+  {"bank":"КЕБ URBAN","owner":"Денис","category":"Экосистема Яндекс","percent":5,"note":"","permanent":true,"id":144},
+  {"bank":"КЕБ URBAN","owner":"Денис","category":"Экосистема Сбер","percent":3,"note":"","permanent":true,"id":145},
+  {"bank":"КЕБ URBAN","owner":"Денис","category":"Все покупки","percent":1,"note":"","permanent":true,"id":146},
+  {"bank":"КЕБ URBAN","owner":"Саша","category":"Экосистема Яндекс","percent":5,"note":"","permanent":true,"id":147},
+  {"bank":"КЕБ URBAN","owner":"Саша","category":"Экосистема Сбер","percent":3,"note":"","permanent":true,"id":148},
+  {"bank":"КЕБ URBAN","owner":"Саша","category":"Все покупки","percent":1,"note":"","permanent":true,"id":149}
+];
+
+// Месячные записи приходят из cashback_data.js. Встроенный массив используется
+// только как источник постоянных категорий для чистой установки и миграции.
+const MONTHLY_DATA = window.MONTHLY_DATA || {period: '', label: '', version: 'empty', records: []};
+const DEFAULT_DATA = [
+  ...(Array.isArray(MONTHLY_DATA.records) ? MONTHLY_DATA.records : []),
+  ...LEGACY_DEFAULT_DATA.filter(record => record.permanent)
+];
+
+// ============================================================
+//  DATA MANAGEMENT
+// ============================================================
+const KEYS = { data:'cb_data_period_v3', legacyData:'cb_data_v2', hidden:'cb_hidden_v2', aiBase:'cb_ai_base', aiKey:'cb_ai_key', aiModel:'cb_ai_model', month:'cb_month', period:'cb_data_period_v3_period', bundleSignature:'cb_monthly_bundle_signature_v1' };
+const MONTH_NAMES = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const NOW = new Date();
+const CURRENT_PERIOD = `${NOW.getFullYear()}-${String(NOW.getMonth()+1).padStart(2,'0')}`;
+const CURRENT_PERIOD_LABEL = `${MONTH_NAMES[NOW.getMonth()]} ${NOW.getFullYear()}`;
+const DEFAULT_DATA_PERIOD = MONTHLY_DATA.period || CURRENT_PERIOD;
+let DATA = [];
+let hidden = new Set();
+
+function periodFromLabel(label) {
+  if (!label) return '';
+  const match = String(label).match(/(Январь|Февраль|Март|Апрель|Май|Июнь|Июль|Август|Сентябрь|Октябрь|Ноябрь|Декабрь)\s+(\d{4})/i);
+  if (!match) return '';
+  const month = MONTH_NAMES.findIndex(m => m.toLowerCase() === match[1].toLowerCase()) + 1;
+  return month ? `${match[2]}-${String(month).padStart(2,'0')}` : '';
+}
+
+function isActiveRecord(record) {
+  return Boolean(record.permanent) || record.period === CURRENT_PERIOD;
+}
+
+function localDateKey(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+
+function dateKeyForDay(day, month, year) {
+  return `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+}
+
+function parseDateParts(value, defaultYear = NOW.getFullYear()) {
+  const match = String(value || '').match(/(\d{1,2})\.(\d{1,2})(?:\.(\d{4}))?/);
+  if (!match) return null;
+  return dateKeyForDay(Number(match[1]), Number(match[2]), Number(match[3] || defaultYear));
+}
+
+function getRecordDateBounds(record) {
+  if (record.validFrom || record.validTo) {
+    return {from:record.validFrom || '', to:record.validTo || ''};
+  }
+  const note = String(record.note || '');
+  const year = Number(String(record.period || CURRENT_PERIOD).slice(0,4)) || NOW.getFullYear();
+  const range = note.match(/(\d{1,2})\.(\d{1,2})\s*(?:[-–—]|до)\s*(\d{1,2})\.(\d{1,2})/);
+  if (range) {
+    return {
+      from:dateKeyForDay(Number(range[1]), Number(range[2]), year),
+      to:dateKeyForDay(Number(range[3]), Number(range[4]), year)
+    };
+  }
+  const starts = note.match(/(?:с|от)\s*(\d{1,2})\.(\d{1,2})/i);
+  const ends = note.match(/(?:до|по)\s*(\d{1,2})\.(\d{1,2})/i);
+  return {
+    from: starts ? dateKeyForDay(Number(starts[1]), Number(starts[2]), year) : '',
+    to: ends ? dateKeyForDay(Number(ends[1]), Number(ends[2]), year) : ''
+  };
+}
+
+function isRecordCurrentlyValid(record, today = localDateKey()) {
+  if (record.permanent) return true;
+  const bounds = getRecordDateBounds(record);
+  if (bounds.from && today < bounds.from) return false;
+  if (bounds.to && today > bounds.to) return false;
+  return true;
+}
+
+function recordDateStatus(record, today = localDateKey()) {
+  if (record.permanent) return 'Постоянная категория';
+  const bounds = getRecordDateBounds(record);
+  if (bounds.from && today < bounds.from) return `Начнёт действовать ${bounds.from.split('-').reverse().join('.')}`;
+  if (bounds.to && today > bounds.to) return `Срок истёк ${bounds.to.split('-').reverse().join('.')}`;
+  return '';
+}
+
+function normalizeRecord(record, fallbackPeriod = CURRENT_PERIOD) {
+  const normalized = {...record};
+  normalized.id = Number.isFinite(Number(normalized.id)) ? Number(normalized.id) : nextId();
+  normalized.percent = Number(normalized.percent) || 0;
+  if (!normalized.permanent) normalized.period = normalized.period || fallbackPeriod;
+  else delete normalized.period;
+  return normalized;
+}
+
+function loadData() {
+  try {
+    const savedV3 = localStorage.getItem(KEYS.data);
+    const savedV2 = localStorage.getItem(KEYS.legacyData);
+    const savedPeriod = localStorage.getItem(KEYS.period) || periodFromLabel(localStorage.getItem(KEYS.month));
+
+    if (savedV3) {
+      const parsed = JSON.parse(savedV3);
+      const records = Array.isArray(parsed) ? parsed : [];
+      const fallbackPeriod = savedPeriod || CURRENT_PERIOD;
+      DATA = records.map(record => normalizeRecord(record, fallbackPeriod))
+        .filter(record => isActiveRecord(record));
+    } else if (savedV2) {
+      // Первый запуск новой версии: встроенный набор становится текущим,
+      // а из старого хранилища переносим только постоянные записи.
+      const legacy = JSON.parse(savedV2);
+      const legacyPermanent = (Array.isArray(legacy) ? legacy : [])
+        .filter(record => record.permanent)
+        .map(record => normalizeRecord(record));
+      DATA = DEFAULT_DATA.map(record => normalizeRecord(record, CURRENT_PERIOD));
+      legacyPermanent.forEach(record => {
+        if (!DATA.some(existing => recordKey(existing) === recordKey(record))) DATA.push(record);
+      });
+    } else {
+      DATA = DEFAULT_DATA.map(record => normalizeRecord(record, DEFAULT_DATA_PERIOD));
+    }
+
+    // Канонически восстанавливаем постоянные категории КЕБ. Это убирает
+    // старые объединённые записи из localStorage, но не трогает другие банки.
+    const kebBanks = new Set(DEFAULT_DATA.filter(record => record.permanent).map(record => record.bank));
+    const kebDefaults = DEFAULT_DATA.filter(record => record.permanent);
+    DATA = DATA.filter(record => !record.permanent || !kebBanks.has(record.bank));
+    kebDefaults.forEach(record => {
+      if (!DATA.some(existing => recordKey(existing) === recordKey(record))) {
+        DATA.push(normalizeRecord(record));
+      }
+    });
+    saveData();
+  } catch(e) {
+    DATA = DEFAULT_DATA.map(record => normalizeRecord(record, CURRENT_PERIOD));
+    saveData();
+  }
+  try {
+    hidden = new Set(JSON.parse(localStorage.getItem(KEYS.hidden) || '[]'));
+  } catch(e) { hidden = new Set(); }
+}
+
+function recordKey(record) {
+  return `${normalize(record.bank)}|${normalize(record.owner)}|${normalize(record.category)}`;
+}
+function upsertCurrentRecord(record) {
+  const normalized = normalizeRecord({...record, period: record.permanent ? undefined : CURRENT_PERIOD}, CURRENT_PERIOD);
+  const index = DATA.findIndex(existing =>
+    !existing.permanent && normalized.period === CURRENT_PERIOD &&
+    existing.period === CURRENT_PERIOD && recordKey(existing) === recordKey(normalized)
+  );
+  if (index >= 0) {
+    DATA[index] = {...DATA[index], ...normalized, id:DATA[index].id};
+    return false;
+  }
+  if (DATA.some(existing => existing.permanent && recordKey(existing) === recordKey(normalized))) return false;
+  DATA.push(normalized);
+  return true;
+}
+function applyMonthlyBundle() {
+  const bundle = MONTHLY_DATA;
+  if (!bundle || bundle.period !== CURRENT_PERIOD || !Array.isArray(bundle.records)) {
+    return false;
+  }
+
+  const signature = `${bundle.version || bundle.period}|${JSON.stringify(bundle.records)}`;
+  if (localStorage.getItem(KEYS.bundleSignature) === signature) {
+    return false;
+  }
+
+  let next = 0;
+  const keys = new Set();
+  const retainedPermanent = [];
+  DATA.filter(record => record.permanent).forEach(record => {
+    const key = recordKey(record);
+    if (!keys.has(key)) {
+      keys.add(key);
+      retainedPermanent.push(normalizeRecord(record));
+    }
+    next = Math.max(next, Number(record.id) || 0);
+  });
+
+  const monthlyRecords = [];
+  bundle.records.forEach(record => {
+    const normalized = normalizeRecord({...record, permanent:false, period:CURRENT_PERIOD, id:++next}, CURRENT_PERIOD);
+    const key = recordKey(normalized);
+    if (!keys.has(key)) {
+      keys.add(key);
+      monthlyRecords.push(normalized);
+    }
+  });
+
+  DATA = [...retainedPermanent, ...monthlyRecords];
+  localStorage.setItem(KEYS.bundleSignature, signature);
+  saveData();
+  return true;
+}
+
+function saveData() {
+  DATA = DATA.filter(isActiveRecord);
+  localStorage.setItem(KEYS.data, JSON.stringify(DATA));
+  localStorage.setItem(KEYS.period, CURRENT_PERIOD);
+}
+function saveHidden() { localStorage.setItem(KEYS.hidden, JSON.stringify([...hidden])); updateHiddenBadge(); }
+function getAiSettings() {
+  return {
+    base: localStorage.getItem(KEYS.aiBase) || 'https://cc.freemodel.dev',
+    key:  localStorage.getItem(KEYS.aiKey)  || '',
+    model:localStorage.getItem(KEYS.aiModel)|| 'claude-opus-5'
+  };
+}
+function getMonth() { return CURRENT_PERIOD_LABEL; }
+function nextId() { return DATA.length ? Math.max(...DATA.map(d=>Number(d.id)||0)) + 1 : 0; }
+
+// ============================================================
+//  TAB SWITCHING
+// ============================================================
+const tabContents = {};
+document.querySelectorAll('.tab-content').forEach(el => tabContents[el.id.replace('tab-','')] = el);
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const name = tab.dataset.tab;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    Object.values(tabContents).forEach(c => c.classList.remove('active'));
+    tabContents[name].classList.add('active');
+    if (name === 'editor') renderEditor();
+    if (name === 'banks') renderBanks();
+    if (name === 'settings') renderSettings();
+  });
+});
+
+// ============================================================
+//  OVERLAY / SHEET
+// ============================================================
+const overlay = document.getElementById('overlay');
+const sheet = document.getElementById('sheet');
+function openOverlay(html) { sheet.innerHTML = html; overlay.classList.add('show'); }
+function closeOverlay() { overlay.classList.remove('show'); }
+overlay.addEventListener('click', e => { if (e.target === overlay) closeOverlay(); });
+
+// ============================================================
+//  SEARCH TAB
+// ============================================================
+function normalize(s) { return s.toLowerCase().replace(/ё/g,'е').trim(); }
+
+function buildCatFreq() {
+  const freq = {};
+  DATA.forEach(d => { if (isRecordCurrentlyValid(d)) freq[d.category] = (freq[d.category]||0) + 1; });
+  return Object.keys(freq).sort((a,b) => freq[b]-freq[a]);
+}
+
+function renderChips() {
+  const el = document.getElementById('suggestions');
+  el.innerHTML = '';
+  buildCatFreq().forEach(c => {
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.textContent = c;
+    chip.addEventListener('click', () => {
+      document.getElementById('search').value = c;
+      renderSearch();
+      updateActiveChip(c);
+    });
+    el.appendChild(chip);
+  });
+}
+
+function updateActiveChip(val) {
+  const nq = normalize(val);
+  document.querySelectorAll('.chip').forEach(ch => {
+    ch.classList.toggle('active', normalize(ch.textContent) === nq);
+  });
+}
+
+let debTimer = null;
+function debouncedSearch() {
+  clearTimeout(debTimer);
+  debTimer = setTimeout(() => { renderSearch(); updateActiveChip(document.getElementById('search').value); }, 60);
+}
+
+function renderSearch() {
+  const raw = document.getElementById('search').value;
+  document.getElementById('clearBtn').classList.toggle('show', raw.length > 0);
+  const q = normalize(raw);
+  const sugg = document.getElementById('suggestions');
+  if (q) sugg.classList.add('compact');
+  else sugg.classList.remove('compact');
+
+  const grid = document.getElementById('grid');
+  const bestBanner = document.getElementById('bestBanner');
+  const hintLine = document.getElementById('hintLine');
+  grid.innerHTML = '';
+  bestBanner.classList.remove('show');
+  hintLine.style.display = 'none';
+  if (!q) {
+    document.getElementById('countLine').textContent = '';
+    document.getElementById('emptyState').style.display = 'none';
+    return;
+  }
+  let results = DATA.filter(d => !hidden.has(d.id) && isRecordCurrentlyValid(d) &&
+    (normalize(d.category).includes(q) || normalize(d.bank).includes(q)));
+  results.sort((a,b) => b.percent - a.percent);
+  if (!results.length) {
+    document.getElementById('countLine').textContent = '';
+    document.getElementById('emptyState').style.display = 'block';
+    return;
+  }
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('countLine').textContent = `Найдено вариантов: ${results.length}`;
+  hintLine.style.display = 'block';
+  const top = results[0];
+  bestBanner.classList.add('show');
+  document.getElementById('bestPct').textContent = top.percent + '%';
+  document.getElementById('bestBank').textContent = `${top.bank} (${top.owner})`;
+  document.getElementById('bestMeta').textContent = `Категория: ${top.category}` + (top.note ? ` · ${top.note}` : '');
+  const frag = document.createDocumentFragment();
+  results.forEach((r,i) => {
+    const card = document.createElement('div');
+    card.className = 'card' + (i===0?' top':'');
+    card.dataset.id = r.id;
+    card.innerHTML = `<div class="rank">#${i+1}</div><div class="pct">${r.percent}%</div>
+      <div class="cat">${r.category}${r.permanent?' <span style="font-size:0.65rem;opacity:0.7">🔒</span>':''}</div>
+      <div class="bank"><b>${r.bank}</b> (${r.owner})</div>
+      ${r.note?`<div class="note">${r.note}</div>`:''}`;
+    attachLongPress(card, r);
+    frag.appendChild(card);
+  });
+  grid.appendChild(frag);
+}
+
+function attachLongPress(card, record) {
+  let timer=null, moved=false;
+  const start = () => { moved=false; timer=setTimeout(()=>{ if(!moved){ card.classList.add('pressing'); setTimeout(()=>card.classList.remove('pressing'),150); if(navigator.vibrate)navigator.vibrate(15); openCardMenu(record); } },550); };
+  const cancel = () => clearTimeout(timer);
+  card.addEventListener('touchstart', start, {passive:true});
+  card.addEventListener('touchend', cancel);
+  card.addEventListener('touchmove', ()=>{ moved=true; clearTimeout(timer); }, {passive:true});
+  card.addEventListener('touchcancel', cancel);
+  card.addEventListener('mousedown', start);
+  card.addEventListener('mouseup', cancel);
+  card.addEventListener('mouseleave', cancel);
+}
+
+function openCardMenu(r) {
+  openOverlay(`<div class="sheet-title"><b>${r.category}</b>${r.bank} (${r.owner}) · ${r.percent}%</div>
+    <button class="sheet-btn danger" id="_removeBtn">Убрать карту из этой категории</button>
+    <button class="sheet-btn cancel" id="_cancelBtn">Отмена</button>`);
+  document.getElementById('_removeBtn').onclick = () => { hidden.add(r.id); saveHidden(); closeOverlay(); renderSearch(); };
+  document.getElementById('_cancelBtn').onclick = closeOverlay;
+}
+
+function updateHiddenBadge() {
+  const badge = document.getElementById('hiddenBadge');
+  if (hidden.size>0) { badge.style.display='inline-block'; badge.textContent=hidden.size; }
+  else badge.style.display='none';
+  const hc = document.getElementById('hiddenCount');
+  if (hc) hc.textContent = hidden.size;
+}
+
+document.getElementById('search').addEventListener('input', debouncedSearch);
+document.getElementById('clearBtn').addEventListener('click', () => {
+  document.getElementById('search').value = '';
+  renderSearch(); updateActiveChip('');
+  document.getElementById('search').focus();
+});
+document.getElementById('showHiddenBtn').addEventListener('click', () => {
+  if (!hidden.size) { openOverlay(`<div class="sheet-title"><b>Скрытые пары</b>Список пуст</div><button class="sheet-btn cancel" id="_c">Закрыть</button>`); document.getElementById('_c').onclick=closeOverlay; return; }
+  const items = [...hidden].map(id=>DATA.find(d=>d.id===id)).filter(Boolean);
+  openOverlay(`<div class="sheet-title"><b>Скрытые пары (${items.length})</b>Нажмите "Вернуть" для восстановления</div>
+    <div style="max-height:50vh;overflow-y:auto;padding:4px">
+      ${items.map(r=>`<div class="hidden-list-item"><div class="info"><b>${r.category}</b><br>${r.bank} (${r.owner}) · ${r.percent}%</div><button class="restore-btn" data-id="${r.id}">Вернуть</button></div>`).join('')}
+    </div><button class="sheet-btn cancel" id="_c2">Закрыть</button>`);
+  sheet.querySelectorAll('.restore-btn').forEach(btn => btn.addEventListener('click', () => {
+    hidden.delete(parseInt(btn.dataset.id)); saveHidden();
+    btn.closest('.hidden-list-item').remove(); renderSearch();
+  }));
+  document.getElementById('_c2').onclick = closeOverlay;
+});
+
+// ============================================================
+//  IMPORT TAB - MODE SWITCHER
+// ============================================================
+function switchImportMode(mode) {
+  ['auto','manual','text'].forEach(m => {
+    const btn = document.getElementById('importMode' + m.charAt(0).toUpperCase() + m.slice(1));
+    const panel = document.getElementById(m + 'ImportForm');
+    if (btn) btn.classList.toggle('active', m === mode);
+    if (panel) panel.classList.toggle('active', m === mode);
+  });
+}
+
+// ============================================================
+//  MANUAL IMPORT FORM
+// ============================================================
+const BANKS_LIST = ['Альфа','Альфа Бизнес','Т-Банк','Совкомбанк','МТС','МТС Premium','ОЗОН','ИНГО','МКБ','ПСБ','ОТП','Сбер','Яндекс','УБрИР','Свой банк','БКС','РСХБ','ВТБ'];
+const CATEGORIES_LIST = ['Супермаркеты','Кафе и рестораны','Фастфуд','Такси','Аптеки','Транспорт','Дом и ремонт','Образование','Развлечения','Хобби','Красота','Одежда и обувь','Отели','Активный отдых','Медицина','Спорттовары','Книги','Фото, Видео','АЗС','Ювелирные изделия','ЖКХ','Цветы','Онлайн-покупки','Маркетплейсы','Каршеринг','Все покупки','Цифровые товары','Техника','Искусство','Путешествия','Авиабилеты','Парфюмерия и косметика','Товары для детей','Товары для дома','Медицинские услуги','Рестораны','Салоны красоты','Здоровье и медицина','Фитнес','Такси и каршеринг','Электроника и бытовая техника'];
+
+let manualSelectedOwner = null;
+let manualCategories = [];
+
+function initManualForm() {
+  const sel = document.getElementById('manualBank');
+  BANKS_LIST.forEach(b => {
+    const opt = document.createElement('option');
+    opt.value = b;
+    opt.textContent = b;
+    sel.appendChild(opt);
+  });
+  manualCategories = CATEGORIES_LIST.map(c => ({name:c, checked:false, percent:0}));
+  renderManualCategories();
+}
+
+function renderManualCategories() {
+  const searchVal = (document.getElementById('catSearch')?.value || '').toLowerCase().trim();
+  const list = document.getElementById('manualCatList');
+
+  // Строим список с оригинальными индексами, фильтруем:
+  // отмеченные — всегда видны (показываем вверху), остальные — по поиску
+  const items = manualCategories
+    .map((c, i) => ({...c, origIndex: i}))
+    .filter(c => c.checked || !searchVal || c.name.toLowerCase().includes(searchVal));
+
+  // Отмеченные — вверху
+  items.sort((a, b) => {
+    if (a.checked && !b.checked) return -1;
+    if (!a.checked && b.checked) return 1;
+    return 0;
+  });
+
+  if (!items.length) {
+    list.innerHTML = `<div style="padding:16px;text-align:center;color:var(--muted);">Ничего не найдено</div>`;
+    return;
+  }
+
+  list.innerHTML = items.map(c => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px;border-bottom:1px solid var(--border);${c.checked?'background:rgba(79,209,197,0.05);':''}">
+      <input type="checkbox" id="mcat_${c.origIndex}" ${c.checked?'checked':''} onchange="toggleManualCat(${c.origIndex})" style="width:18px;height:18px;cursor:pointer;flex-shrink:0;">
+      <label for="mcat_${c.origIndex}" style="flex:1;cursor:pointer;user-select:none;">${
+        searchVal && !c.checked
+          ? c.name.replace(new RegExp(`(${searchVal})`, 'gi'), '<b style="color:var(--accent)">$1</b>')
+          : c.name
+      }</label>
+      <input type="number" id="mpct_${c.origIndex}" value="${c.percent||''}" placeholder="%" min="0" max="100" step="0.5"
+        style="width:70px;padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);text-align:center;"
+        onchange="updateManualPercent(${c.origIndex},this.value)" ${c.checked?'':'disabled'}>
+      <button onclick="deleteManualCat(${c.origIndex})" style="width:32px;height:32px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--danger);cursor:pointer;flex-shrink:0;">×</button>
+    </div>
+  `).join('');
+}
+
+function toggleManualCat(i) {
+  manualCategories[i].checked = document.getElementById(`mcat_${i}`).checked;
+  renderManualCategories();
+}
+
+function updateManualPercent(i,val) {
+  manualCategories[i].percent = parseFloat(val) || 0;
+}
+
+function deleteManualCat(i) {
+  if (!confirm('Удалить эту категорию из списка?')) return;
+  manualCategories.splice(i,1);
+  renderManualCategories();
+}
+
+function addCustomCategory() {
+  const name = prompt('Название новой категории:');
+  if (!name || !name.trim()) return;
+  manualCategories.push({name:name.trim(), checked:false, percent:0});
+  renderManualCategories();
+}
+
+function addCustomBank() {
+  const name = prompt('Название нового банка:');
+  if (!name || !name.trim()) return;
+  BANKS_LIST.push(name.trim());
+  const sel = document.getElementById('manualBank');
+  const opt = document.createElement('option');
+  opt.value = name.trim();
+  opt.textContent = name.trim();
+  sel.appendChild(opt);
+  sel.value = name.trim();
+}
+
+function selectManualOwner(name) {
+  manualSelectedOwner = name;
+  document.getElementById('manualOwnerDenis').classList.remove('active-denis','active-sasha');
+  document.getElementById('manualOwnerSasha').classList.remove('active-denis','active-sasha');
+  if (name === 'Денис') document.getElementById('manualOwnerDenis').classList.add('active-denis');
+  if (name === 'Саша') document.getElementById('manualOwnerSasha').classList.add('active-sasha');
+}
+
+function submitManualImport() {
+  const bank = document.getElementById('manualBank').value;
+  if (!bank) { alert('Выбери банк'); return; }
+  if (!manualSelectedOwner) { alert('Выбери владельца'); return; }
+  const selected = manualCategories.filter(c => c.checked && c.percent > 0);
+  if (!selected.length) { alert('Отметь хотя бы одну категорию и укажи процент'); return; }
+  const note = document.getElementById('manualNote').value.trim();
+  const replace = document.getElementById('replaceMode').checked;
+
+  if (replace) {
+    const before = DATA.length;
+    DATA = DATA.filter(d => !(d.bank === bank && d.owner === manualSelectedOwner && !d.permanent && d.period === CURRENT_PERIOD));
+    const removed = before - DATA.length;
+    if (removed > 0) console.log(`Удалено ${removed} старых записей ${bank}/${manualSelectedOwner}`);
+  }
+
+  let count = 0;
+  selected.forEach(c => {
+    upsertCurrentRecord({bank, owner:manualSelectedOwner, category:c.name, percent:c.percent, note});
+    count++;
+  });
+  saveData();
+
+  const msg = replace
+    ? `✅ Добавлено ${count} категорий для ${bank} (${manualSelectedOwner})\nСтарые записи заменены.`
+    : `✅ Добавлено ${count} категорий для ${bank} (${manualSelectedOwner})`;
+  alert(msg);
+
+  manualCategories.forEach(c => { c.checked=false; c.percent=0; });
+  document.getElementById('manualNote').value = '';
+  document.getElementById('replaceMode').checked = false;
+  const cs = document.getElementById('catSearch');
+  if (cs) cs.value = '';
+  renderManualCategories();
+  renderChips();
+  renderSearch();
+}
+
+// ============================================================
+//  TEXT / JSON IMPORT
+// ============================================================
+const AI_PROMPT = `Проанализируй скриншот из мобильного приложения банка.
+Выведи ТОЛЬКО список категорий кэшбека в этом формате (без пояснений):
+
+Банк: [название банка]
+- [категория] [число]%
+- [категория] [число]% ([примечание если есть])
+
+Пример:
+Банк: Альфа
+- Кафе и рестораны 7%
+- Такси 5% (до 23.08)
+- Книги 7%
+
+Если на скрине несколько банков — выведи каждый отдельным блоком.
+Процент всегда числом. Если категория временная — укажи даты в скобках.`;
+
+let textParsedData = [];
+
+function initPromptBox() {
+  const box = document.getElementById('promptBox');
+  if (box) box.textContent = AI_PROMPT;
+}
+
+function copyPrompt() {
+  navigator.clipboard?.writeText(AI_PROMPT).then(() => alert('✅ Промпт скопирован!'))
+    .catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = AI_PROMPT;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      alert('✅ Промпт скопирован!');
+    });
+}
+
+function parseTextBlock(text) {
+  // Try JSON first
+  try {
+    const json = JSON.parse(text.trim());
+    const arr = Array.isArray(json) ? json : [json];
+    return arr.map(item => ({
+      bank: item.bank || '?',
+      owner: item.owner || '',
+      categories: (item.categories || []).map(c => ({
+        category: c.category || c.name || '',
+        percent: parseFloat(c.percent || c.pct || 0),
+        note: c.note || ''
+      })).filter(c => c.category && c.percent > 0)
+    }));
+  } catch(e) {}
+
+  // Text format: split by double newline or "Банк:" marker
+  const results = [];
+  const blocks = text.split(/\n\s*\n|(?=Банк\s*:)/gi).filter(b => b.trim());
+
+  blocks.forEach(block => {
+    const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
+    if (!lines.length) return;
+
+    let bank = '';
+    let owner = '';
+    const categories = [];
+
+    lines.forEach(line => {
+      const bankMatch = line.match(/^Банк\s*:\s*(.+)/i);
+      const ownerMatch = line.match(/^Владелец\s*:\s*(.+)/i);
+      const catMatch = line.match(/^[-•*]\s*(.+?)\s+(\d+(?:[.,]\d+)?)%\s*(?:\((.+?)\))?$/);
+      if (bankMatch) { bank = bankMatch[1].trim(); return; }
+      if (ownerMatch) { owner = ownerMatch[1].trim(); return; }
+      if (catMatch) {
+        categories.push({
+          category: catMatch[1].trim(),
+          percent: parseFloat(catMatch[2].replace(',','.')),
+          note: catMatch[3] || ''
+        });
+      }
+    });
+
+    if (bank && categories.length) {
+      results.push({ bank, owner, categories });
+    }
+  });
+  return results;
+}
+
+function parseAndPreview() {
+  const raw = document.getElementById('textImportArea').value.trim();
+  if (!raw) { alert('Вставь текст или JSON'); return; }
+  textParsedData = parseTextBlock(raw);
+  const list = document.getElementById('textPreviewList');
+  if (!textParsedData.length) {
+    list.innerHTML = `<div class="info-msg" style="color:var(--danger);">❌ Не удалось распознать формат. Проверь текст.</div>`;
+    document.getElementById('textConfirmBtn').style.display = 'none';
+    document.getElementById('textClearBtn').style.display = 'none';
+    return;
+  }
+  list.innerHTML = textParsedData.map((r,i) => {
+    const ownerBadge = r.owner
+      ? `<span class="pi-owner ${r.owner==='Денис'?'denis':'sasha'}">${r.owner}</span>`
+      : `<select class="pi-owner denis" id="towner_${i}" style="border:1px solid var(--border);border-radius:8px;padding:3px 6px;background:var(--card);color:var(--text);">
+          <option value="Денис">Денис</option><option value="Саша">Саша</option>
+        </select>`;
+    const cats = r.categories.map(c => `${c.category} — ${c.percent}%${c.note?' ('+c.note+')':''}`).join('<br>');
+    return `<div class="preview-item">
+      <div class="pi-header">
+        <div class="pi-bank">${r.bank}</div>
+        ${ownerBadge}
+      </div>
+      <div class="pi-cats">${cats}</div>
+      <div class="pi-status"><span class="status-ok">✅ ${r.categories.length} категорий</span></div>
+    </div>`;
+  }).join('');
+  document.getElementById('textConfirmBtn').style.display = 'block';
+  document.getElementById('textClearBtn').style.display = 'block';
+}
+
+function confirmTextImport() {
+  const replace = document.getElementById('textReplaceMode').checked;
+  let total = 0;
+  textParsedData.forEach((r, i) => {
+    const owner = r.owner || document.getElementById(`towner_${i}`)?.value || 'Денис';
+    if (replace) {
+      DATA = DATA.filter(d => !(d.bank === r.bank && d.owner === owner && !d.permanent && d.period === CURRENT_PERIOD));
+    }
+    r.categories.forEach(c => {
+      upsertCurrentRecord({ bank:r.bank, owner, category:c.category, percent:c.percent, note:c.note||'' });
+      total++;
+    });
+  });
+  saveData();
+  alert(`✅ Импортировано ${total} категорий из ${textParsedData.length} банков`);
+  clearTextImport();
+  renderChips();
+  renderSearch();
+}
+
+function clearTextImport() {
+  textParsedData = [];
+  document.getElementById('textImportArea').value = '';
+  document.getElementById('textPreviewList').innerHTML = '';
+  document.getElementById('textConfirmBtn').style.display = 'none';
+  document.getElementById('textClearBtn').style.display = 'none';
+}
+let selectedOwner = null;
+let uploadedFiles = [];
+let recognizedData = [];
+
+function selectOwner(name) {
+  selectedOwner = name;
+  document.getElementById('ownerDenis').classList.remove('active-denis','active-sasha');
+  document.getElementById('ownerSasha').classList.remove('active-denis','active-sasha');
+  if (name === 'Денис') document.getElementById('ownerDenis').classList.add('active-denis');
+  if (name === 'Саша') document.getElementById('ownerSasha').classList.add('active-sasha');
+  checkImportReady();
+}
+
+document.getElementById('fileInput').addEventListener('change', e => {
+  uploadedFiles = [...e.target.files];
+  renderThumbs();
+  checkImportReady();
+});
+
+const uploadArea = document.getElementById('uploadArea');
+['dragover','dragenter'].forEach(evt => uploadArea.addEventListener(evt, e => { e.preventDefault(); uploadArea.classList.add('dragover'); }));
+['dragleave','dragend'].forEach(evt => uploadArea.addEventListener(evt, () => uploadArea.classList.remove('dragover')));
+uploadArea.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadArea.classList.remove('dragover');
+  uploadedFiles = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
+  renderThumbs();
+  checkImportReady();
+});
+
+function renderThumbs() {
+  const grid = document.getElementById('thumbGrid');
+  grid.innerHTML = '';
+  uploadedFiles.forEach((file,i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'thumb-wrap';
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(file);
+    const btn = document.createElement('button');
+    btn.className = 'thumb-del';
+    btn.textContent = '×';
+    btn.onclick = () => { uploadedFiles.splice(i,1); renderThumbs(); checkImportReady(); };
+    wrap.append(img, btn);
+    grid.appendChild(wrap);
+  });
+}
+
+function checkImportReady() {
+  const ready = selectedOwner && uploadedFiles.length > 0;
+  document.getElementById('recognizeBtn').disabled = !ready;
+}
+
+async function runRecognition() {
+  const ai = getAiSettings();
+  if (!ai.key) {
+    alert('Сначала укажи API ключ и Base URL в разделе Настройки!');
+    return;
+  }
+  const month = document.getElementById('importMonth').value;
+  const year = document.getElementById('importYear').value;
+  document.getElementById('recognizeBtn').disabled = true;
+  document.getElementById('importLog').textContent = 'Отправляю скрины в Claude AI...';
+  document.getElementById('progressBar').style.display = 'block';
+  recognizedData = [];
+  for (let i=0; i<uploadedFiles.length; i++) {
+    const file = uploadedFiles[i];
+    document.getElementById('progressFill').style.width = `${((i+1)/uploadedFiles.length)*100}%`;
+    document.getElementById('importLog').textContent = `Распознаю ${i+1}/${uploadedFiles.length}: ${file.name}...`;
+    try {
+      const result = await callClaude(file, selectedOwner, ai);
+      if (result) recognizedData.push(result);
+    } catch(err) {
+      console.error(err);
+      recognizedData.push({ bank:'Ошибка', owner:selectedOwner, categories:[], error: err.message });
+    }
+  }
+  document.getElementById('progressBar').style.display = 'none';
+  document.getElementById('importLog').textContent = `✅ Готово! Распознано ${recognizedData.length} скринов.`;
+  renderPreview();
+  document.getElementById('recognizeBtn').disabled = false;
+}
+
+async function callClaude(file, owner, ai) {
+  const base64 = await fileToBase64(file);
+  const prompt = `Ты — помощник по распознаванию кэшбека банков. На этом скриншоте показаны категории повышенного кэшбека одного банка на месяц.
+
+ЗАДАЧА:
+1. Определи название банка (Т-Банк, Альфа, Сбер, Яндекс, МТС, Совкомбанк, Озон, ИНГО, МКБ, ПСБ, ОТП, УБрИР, Свой банк, БКС, РСХБ, и т.д.)
+2. Найди все категории с процентами кэшбека
+3. Если есть дополнительные условия (даты, минимальные траты, подписка) — укажи в примечании
+
+ФОРМАТ ОТВЕТА (строгий JSON):
+{
+  "bank": "Название банка",
+  "categories": [
+    {"category": "Название категории", "percent": число, "note": "примечание или пусто"}
+  ]
+}
+
+Примеры:
+- "Супермаркеты 5%", "Рестораны 10% (до 23.08)", "Такси 7% с подпиской"
+- Всегда указывай процент числом (5, 10.5, 15)
+- Если категория одна, но с несколькими подкатегориями — можешь разделить на отдельные строки
+
+Ответь ТОЛЬКО JSON, без текста до и после.`;
+
+  const resp = await fetch(`${ai.base}/v1/messages`, {
+    method: 'POST',
+    headers: {
+      'x-api-key': ai.key,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: ai.model,
+      max_tokens: 2048,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: file.type,
+              data: base64.split(',')[1]
+            }
+          },
+          {
+            type: 'text',
+            text: prompt
+          }
+        ]
+      }]
+    })
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    throw new Error(`API error: ${resp.status} - ${err}`);
+  }
+
+  const json = await resp.json();
+  const text = json.content?.[0]?.text || '{}';
+  const parsed = extractJSON(text);
+  return { bank: parsed.bank, owner, categories: parsed.categories || [] };
+}
+
+function extractJSON(text) {
+  const cleaned = text.replace(/```json\n?/gi, '').replace(/```/g, '').trim();
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start === -1 || end === -1) {
+    throw new Error('ИИ не вернул JSON. Ответ: ' + cleaned.slice(0, 200));
+  }
+  return JSON.parse(cleaned.slice(start, end + 1));
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderPreview() {
+  const list = document.getElementById('previewList');
+  list.innerHTML = '';
+  recognizedData.forEach((r,i) => {
+    const item = document.createElement('div');
+    item.className = 'preview-item';
+    const ownerClass = r.owner === 'Денис' ? 'denis' : 'sasha';
+    const cats = r.categories?.length ? r.categories.map(c=>`${c.category} — ${c.percent}%${c.note?' ('+c.note+')':''}`).join('<br>') : 'Нет категорий';
+    const status = r.error ? `<span class="status-err">❌ ${r.error}</span>` : `<span class="status-ok">✅ ${r.categories?.length||0} категорий</span>`;
+    item.innerHTML = `<div class="pi-header">
+        <div class="pi-bank">${r.bank}</div>
+        <div class="pi-owner ${ownerClass}">${r.owner}</div>
+      </div>
+      <div class="pi-cats">${cats}</div>
+      <div class="pi-status">${status}</div>`;
+    list.appendChild(item);
+  });
+  document.getElementById('confirmImportBtn').style.display = recognizedData.length ? 'block' : 'none';
+  document.getElementById('clearImportBtn').style.display = recognizedData.length ? 'block' : 'none';
+}
+
+function confirmImport() {
+  let count = 0;
+  recognizedData.forEach(r => {
+    if (!r.categories || r.error) return;
+    r.categories.forEach(c => {
+      upsertCurrentRecord({ bank:r.bank, owner:r.owner, category:c.category, percent:c.percent||0, note:c.note||'' });
+      count++;
+    });
+  });
+  saveData();
+  alert(`✅ Импортировано ${count} категорий за ${CURRENT_PERIOD_LABEL}!`);
+  clearImport();
+  renderChips();
+  renderSearch();
+}
+
+function clearImport() {
+  uploadedFiles = [];
+  recognizedData = [];
+  document.getElementById('thumbGrid').innerHTML = '';
+  document.getElementById('previewList').innerHTML = '';
+  document.getElementById('importLog').textContent = '';
+  document.getElementById('confirmImportBtn').style.display = 'none';
+  document.getElementById('clearImportBtn').style.display = 'none';
+  document.getElementById('fileInput').value = '';
+  checkImportReady();
+}
+
+// ============================================================
+//  BANKS TAB
+// ============================================================
+let bankFilter = 'all';
+
+function setBankFilter(val, el) {
+  bankFilter = val;
+  document.querySelectorAll('[data-bfilter]').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderBanks();
+}
+
+function renderBanks() {
+  const container = document.getElementById('banksContainer');
+  if (!container) return;
+
+  // Группируем по банк+владелец
+  const groups = {};
+  DATA.forEach(d => {
+    if (!isRecordCurrentlyValid(d)) return;
+    if (bankFilter !== 'all' && d.owner !== bankFilter) return;
+    const key = `${d.bank}|||${d.owner}`;
+    if (!groups[key]) groups[key] = { bank: d.bank, owner: d.owner, items: [] };
+    groups[key].items.push(d);
+  });
+
+  const sorted = Object.values(groups).sort((a, b) => {
+    if (a.owner !== b.owner) return a.owner === 'Денис' ? -1 : 1;
+    return a.bank.localeCompare(b.bank, 'ru');
+  });
+
+  if (!sorted.length) {
+    container.innerHTML = '<div class="empty">Нет данных</div>';
+    return;
+  }
+
+  container.innerHTML = sorted.map((g, gi) => {
+    const ownerClass = g.owner === 'Денис' ? 'denis' : 'sasha';
+    const sortedItems = [...g.items].filter(isRecordCurrentlyValid).sort((a, b) => b.percent - a.percent);
+    const topPct = sortedItems[0]?.percent || 0;
+    const catRows = sortedItems.map(item => `
+      <div class="bank-cat-row">
+        <span style="font-size:0.88rem;">${item.category}${item.permanent ? ' 🔒' : ''}</span>
+        <div style="text-align:right;flex-shrink:0;margin-left:8px;">
+          <span style="font-weight:800;color:var(--accent);font-size:1rem;">${item.percent}%</span>
+          ${item.note ? `<div style="font-size:0.68rem;color:var(--muted);">${item.note}</div>` : ''}
+        </div>
+      </div>`).join('');
+
+    return `<div class="bank-card">
+      <div class="bank-card-header" onclick="toggleBankCard('bbody_${gi}','bchev_${gi}')">
+        <div>
+          <div style="font-weight:700;font-size:0.95rem;">${g.bank}</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+            <span class="bank-owner-tag ${ownerClass}">${g.owner}</span>
+            <span style="color:var(--muted);font-size:0.78rem;">${g.items.length} кат. · макс. ${topPct}%</span>
+          </div>
+        </div>
+        <span id="bchev_${gi}" style="color:var(--muted);font-size:1.1rem;transition:transform .2s;">▸</span>
+      </div>
+      <div class="bank-card-body" id="bbody_${gi}" style="display:none;">${catRows}</div>
+    </div>`;
+  }).join('');
+}
+
+function toggleBankCard(bodyId, chevId) {
+  const body = document.getElementById(bodyId);
+  const chev = document.getElementById(chevId);
+  if (!body) return;
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  if (chev) chev.textContent = open ? '▸' : '▾';
+}
+
+// ============================================================
+//  EDITOR TAB
+// ============================================================
+let editorFilter = 'all';
+
+document.querySelectorAll('.filter-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    editorFilter = chip.dataset.filter;
+    renderEditor();
+  });
+});
+
+function renderEditor() {
+  const list = document.getElementById('editorList');
+  const empty = document.getElementById('editorEmpty');
+  const items = editorFilter === 'all' ? DATA : DATA.filter(d => d.owner === editorFilter);
+  const sorted = [...items].sort((a,b) => a.bank.localeCompare(b.bank,'ru') || a.owner.localeCompare(b.owner,'ru') || b.percent - a.percent);
+  if (!sorted.length) { list.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  list.innerHTML = sorted.map(r => {
+    const ownerColor = r.owner==='Денис' ? 'var(--accent)' : 'var(--accent2)';
+    const lockIcon = r.permanent ? '🔒' : '🔓';
+    const lockTitle = r.permanent ? 'Постоянная (не удаляется при обновлении)' : 'Непостоянная';
+    const dateStatus = recordDateStatus(r);
+    const statusMarkup = dateStatus && !r.permanent ? ` <span style="font-size:0.7rem;color:var(--danger);">(${dateStatus})</span>` : '';
+    return `<div class="editor-item" data-id="${r.id}" style="${dateStatus && !r.permanent ? 'opacity:0.7;' : ''}">
+      <div class="ei-info">
+        <div class="ei-cat">${r.category}${r.permanent ? ' <span style="font-size:0.7rem;color:var(--accent2);">🔒</span>' : ''}${statusMarkup}</div>
+        <div class="ei-bank">${r.bank} · <span style="color:${ownerColor}">${r.owner}</span>${r.note?' · '+r.note:''}</div>
+      </div>
+      <div class="ei-pct">${r.percent}%</div>
+      <div class="ei-actions">
+        <button class="icon-btn" title="${lockTitle}" onclick="togglePermanent(${r.id})">${lockIcon}</button>
+        <button class="icon-btn" onclick="openEditCard(${r.id})">✏️</button>
+        <button class="icon-btn danger" onclick="deleteCard(${r.id})">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openAddCard() {
+  openCardForm(null);
+}
+
+function openEditCard(id) {
+  const r = DATA.find(d => d.id === id);
+  if (r) openCardForm(r);
+}
+
+function openCardForm(r) {
+  const isEdit = !!r;
+  openOverlay(`
+    <div class="sheet-title"><b>${isEdit?'Редактировать':'Добавить карту'}</b></div>
+    <div class="form-group">
+      <label>Банк</label>
+      <input class="form-input" id="f_bank" value="${isEdit?r.bank:''}" placeholder="Название банка">
+    </div>
+    <div class="form-group">
+      <label>Владелец</label>
+      <select class="form-input" id="f_owner">
+        <option value="Денис" ${(!r||r.owner==='Денис')?'selected':''}>Денис</option>
+        <option value="Саша" ${(r&&r.owner==='Саша')?'selected':''}>Саша</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Категория</label>
+      <input class="form-input" id="f_cat" value="${isEdit?r.category:''}" placeholder="Супермаркеты, Такси...">
+    </div>
+    <div class="form-group">
+      <label>Кэшбек %</label>
+      <input class="form-input" id="f_pct" type="number" value="${isEdit?r.percent:''}" placeholder="5" min="0" max="100" step="0.5">
+    </div>
+    <div class="form-group">
+      <label>Примечание (необязательно)</label>
+      <input class="form-input" id="f_note" value="${isEdit?r.note:''}" placeholder="до 23.08, с подпиской...">
+    </div>
+    <div style="padding:8px">
+      <button class="btn-primary" onclick="saveCard(${isEdit?r.id:'null'})">${isEdit?'Сохранить':'Добавить'}</button>
+      <button class="btn-secondary" onclick="closeOverlay()">Отмена</button>
+    </div>`);
+}
+
+function saveCard(id) {
+  const bank = document.getElementById('f_bank').value.trim();
+  const owner = document.getElementById('f_owner').value;
+  const category = document.getElementById('f_cat').value.trim();
+  const percent = parseFloat(document.getElementById('f_pct').value);
+  const note = document.getElementById('f_note').value.trim();
+  if (!bank || !category || isNaN(percent)) { alert('Заполни все обязательные поля'); return; }
+  if (id === null) {
+    upsertCurrentRecord({ bank, owner, category, percent, note });
+  } else {
+    const r = DATA.find(d => d.id === id);
+    if (r) Object.assign(r, { bank, owner, category, percent, note });
+  }
+  saveData();
+  closeOverlay();
+  renderEditor();
+  renderChips();
+}
+
+function togglePermanent(id) {
+  const r = DATA.find(d => d.id === id);
+  if (!r) return;
+  r.permanent = !r.permanent;
+  saveData();
+  renderEditor();
+}
+
+function deleteCard(id) {
+  if (!confirm('Удалить эту запись?')) return;
+  DATA = DATA.filter(d => d.id !== id);
+  hidden.delete(id);
+  saveData();
+  saveHidden();
+  renderEditor();
+  renderChips();
+}
+
+// ============================================================
+//  SETTINGS TAB
+// ============================================================
+function renderSettings() {
+  const ai = getAiSettings();
+  document.getElementById('aiBaseUrl').value = ai.base;
+  document.getElementById('aiApiKey').value = ai.key ? ai.key.substring(0,8) + '••••••••' : '';
+  document.getElementById('aiModel').value = ai.model;
+  document.getElementById('currentMonthDisplay').textContent = getMonth();
+  document.getElementById('dataCount').textContent = DATA.length;
+  document.getElementById('hiddenCount').textContent = hidden.size;
+}
+
+function saveAiSettings() {
+  const base = document.getElementById('aiBaseUrl').value.trim();
+  const key = document.getElementById('aiApiKey').value.trim();
+  const model = document.getElementById('aiModel').value;
+  if (!base || !key || key.includes('•')) {
+    alert('Заполни все поля корректно');
+    return;
+  }
+  localStorage.setItem(KEYS.aiBase, base);
+  localStorage.setItem(KEYS.aiKey, key);
+  localStorage.setItem(KEYS.aiModel, model);
+  renderSettings();
+  alert('✅ Настройки AI сохранены');
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(DATA, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `cashback_${getMonth().replace(' ','_')}.json`;
+  a.click();
+}
+
+function importData() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const imported = JSON.parse(ev.target.result);
+        if (!Array.isArray(imported)) throw new Error('Неверный формат');
+        if (!confirm(`Загрузить ${imported.length} записей? Текущие данные будут заменены.`)) return;
+        DATA = imported.map(record => normalizeRecord(record, CURRENT_PERIOD)).filter(isActiveRecord);
+        saveData();
+        renderSettings();
+        renderChips();
+        alert('✅ Данные загружены');
+      } catch(err) { alert('Ошибка: ' + err.message); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function resetToDefault() {
+  if (!confirm(`Сбросить данные к встроенному набору для ${CURRENT_PERIOD_LABEL}? Это нельзя отменить.`)) return;
+  DATA = DEFAULT_DATA.map(record => normalizeRecord(record, CURRENT_PERIOD));
+  hidden = new Set();
+  saveData();
+  saveHidden();
+  renderSettings();
+  renderChips();
+  renderSearch();
+  alert('✅ Данные сброшены');
+}
+
+function clearHidden() {
+  if (!hidden.size) { alert('Скрытых карт нет'); return; }
+  if (!confirm(`Показать все ${hidden.size} скрытых карт?`)) return;
+  hidden = new Set();
+  saveHidden();
+  renderSettings();
+  renderSearch();
+}
+
+// ============================================================
+//  MONTH MANAGEMENT — update title based on import month
+// ============================================================
+function updateMonthFromImport() {
+  // Период берётся с телефона автоматически; ручное изменение отключено.
+  updatePeriodUI();
+}
+document.getElementById('importMonth').addEventListener('change', updateMonthFromImport);
+document.getElementById('importYear').addEventListener('change', updateMonthFromImport);
+
+function updatePeriodUI() {
+  const text = `Текущий период: ${CURRENT_PERIOD_LABEL}`;
+  const indicator = document.getElementById('periodIndicator');
+  const importIndicator = document.getElementById('importPeriodIndicator');
+  if (indicator) indicator.innerHTML = `<b>${text}</b>`;
+  if (importIndicator) importIndicator.innerHTML = `<b>${text}</b> · старые временные категории не используются`;
+  const importTabIndicator = document.getElementById('importTabPeriodIndicator');
+  if (importTabIndicator) importTabIndicator.innerHTML = `<b>${text}</b>`;
+  const current = document.getElementById('currentMonthDisplay');
+  if (current) current.textContent = CURRENT_PERIOD_LABEL;
+  const footer = document.getElementById('footerLine');
+  if (footer) footer.textContent = `Кэшбек-навигатор · ${CURRENT_PERIOD_LABEL}`;
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+function init() {
+  loadData();
+  applyMonthlyBundle();
+  const month = getMonth();
+  document.getElementById('footerLine').textContent = `Кэшбек-навигатор · ${month}`;
+  renderChips();
+  renderSearch();
+  updateHiddenBadge();
+  initManualForm();
+  initPromptBox();
+  updatePeriodUI();
+}
+
+init();
+
+// PWA Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
