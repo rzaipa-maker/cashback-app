@@ -1,0 +1,209 @@
+ИНСТРУКЦИЯ: КАК УСТАНОВИТЬ НА ТЕЛЕФОН И СОБРАТЬ APK
+=====================================================
+
+═══════════════════════════════════════════
+СПОСОБ 1 — PWA (ПРОЩЕ ВСЕГО, 5 МИНУТ)
+═══════════════════════════════════════════
+
+Что это: приложение устанавливается прямо через браузер, без APK и магазинов.
+Работает офлайн, иконка на рабочем столе — как обычное приложение.
+
+ШАГ 1: Скопируй файлы на телефон
+  - cashback_navigator.html
+  - cashback_data.js
+  - manifest.json
+  - sw.js
+  - icon-192.png  (сгенерируй через generate_icons.html)
+  - icon-512.png  (сгенерируй через generate_icons.html)
+
+  Способы передачи: Telegram себе, Google Drive, USB-кабель.
+
+ШАГ 2: Открой в Chrome на Android
+  - Открой Chrome → нажми три точки (меню) → "Добавить на главный экран"
+  - Или появится автоматический баннер "Установить"
+  - Подтверди → иконка появится на рабочем столе
+
+ШАГ 3: Готово!
+  - Открывается как приложение (без адресной строки)
+  - Работает без интернета
+  - Данные хранятся на телефоне
+
+ВАЖНО: При открытии с устройства Chrome должен видеть manifest.json рядом с HTML.
+Если файлы лежат в одной папке — всё работает автоматически.
+
+
+═══════════════════════════════════════════
+СПОСОБ 2 — СОБРАТЬ APK ЧЕРЕЗ PWABUILDER
+═══════════════════════════════════════════
+
+Что нужно:
+  - ПК с браузером
+  - Файлы должны быть ОПУБЛИКОВАНЫ в интернете (нужен хостинг)
+
+ШАГ 1: Бесплатный хостинг на GitHub Pages
+  1. Зарегистрируйся на github.com (если нет аккаунта)
+  2. Создай новый репозиторий: "cashback-app" (сделай Public)
+  3. Загрузи файлы: cashback_navigator.html, manifest.json, sw.js, icon-192.png, icon-512.png
+  4. Зайди в Settings → Pages → Source: "main branch" → Save
+  5. Получишь адрес типа: https://ИМЯ.github.io/cashback-app/cashback_navigator.html
+
+ШАГ 2: PWABuilder генерирует APK
+  1. Открой: https://www.pwabuilder.com
+  2. Вставь URL своего сайта → нажми Start
+  3. PWABuilder проверит PWA (должно быть зелёное)
+  4. Нажми "Package for stores" → "Android"
+  5. Выбери "APK" → Download
+  6. Скачается файл .apk
+
+ШАГ 3: Установи APK на Android
+  1. Перенеси .apk на телефон
+  2. В настройках Android: Безопасность → Разрешить установку из неизвестных источников
+  3. Открой .apk → Установить
+  4. Готово!
+
+
+═══════════════════════════════════════════
+СПОСОБ 3 — ANDROID STUDIO (ПРОДВИНУТЫЙ)
+═══════════════════════════════════════════
+
+Нужно установить: Android Studio (бесплатно, ~4 ГБ)
+Скачать: https://developer.android.com/studio
+
+ШАГ 1: Создай новый проект
+  1. Открой Android Studio
+  2. New Project → Empty Views Activity
+  3. Язык: Kotlin, Min SDK: API 26 (Android 8)
+  4. Имя: CashbackNavigator
+
+ШАГ 2: Замени основной layout
+  Файл: app/src/main/res/layout/activity_main.xml
+  Замени содержимое на:
+
+  <?xml version="1.0" encoding="utf-8"?>
+  <WebView
+      xmlns:android="http://schemas.android.com/apk/res/android"
+      android:id="@+id/webView"
+      android:layout_width="match_parent"
+      android:layout_height="match_parent" />
+
+ШАГ 3: Замени MainActivity.kt
+  Файл: app/src/main/java/com/.../MainActivity.kt
+
+  package com.cashback.navigator
+
+  import android.os.Bundle
+  import android.webkit.*
+  import androidx.appcompat.app.AppCompatActivity
+
+  class MainActivity : AppCompatActivity() {
+      override fun onCreate(savedInstanceState: Bundle?) {
+          super.onCreate(savedInstanceState)
+          setContentView(R.layout.activity_main)
+          val web = findViewById<WebView>(R.id.webView)
+          web.settings.apply {
+              javaScriptEnabled = true
+              domStorageEnabled = true
+              allowFileAccess = true
+              loadWithOverviewMode = true
+              useWideViewPort = true
+          }
+          web.webChromeClient = WebChromeClient()
+          web.loadUrl("file:///android_asset/cashback_navigator.html")
+      }
+  }
+
+ШАГ 4: Скопируй HTML-файлы в assets
+  1. Правой кнопкой на папку "app" → New → Folder → Assets Folder
+  2. Скопируй cashback_navigator.html в папку assets
+  3. Скопируй manifest.json, sw.js туда же
+
+ШАГ 5: Разреши интернет в манифесте
+  Файл: app/src/main/AndroidManifest.xml
+  Добавь строку ПЕРЕД <application>:
+  <uses-permission android:name="android.permission.INTERNET"/>
+
+ШАГ 6: Сборка APK
+  1. Build → Generate Signed Bundle/APK
+  2. Выбери APK → Next
+  3. Create new keystore (сохрани файл, запомни пароль!)
+  4. Release → Finish
+  5. APK будет в: app/release/app-release.apk
+
+
+═══════════════════════════════════════════
+ДОПОЛНИТЕЛЬНО: GEMINI API (НЕ НУЖЕН ДЛЯ РУЧНОГО ИМПОРТА)
+═══════════════════════════════════════════
+
+1. Зайди на: https://aistudio.google.com/apikey
+2. Войди через Google аккаунт
+3. Нажми "Create API key"
+4. Скопируй ключ (начинается с "AIza...")
+5. В приложении: вкладка "Настройки" → вставь ключ → "Сохранить"
+
+Лимиты бесплатного тарифа:
+  - Gemini 2.0 Flash: 1500 запросов/день бесплатно
+  - Для 20 скринов в месяц — более чем достаточно
+
+
+═══════════════════════════════════════════
+ЕЖЕМЕСЯЧНОЕ ОБНОВЛЕНИЕ ДАННЫХ (РЕКОМЕНДУЕМЫЙ СПОСОБ)
+═══════════════════════════════════════════
+
+Теперь основной файл HTML менять каждый месяц НЕ НУЖНО.
+Для нового месяца заменяется только файл:
+
+  cashback_data.js
+
+Приложение само определяет месяц по дате телефона. Вверху вкладок
+будет показан текущий период, например "Октябрь 2026".
+Старые временные категории при переходе в новый месяц автоматически
+скрываются. Постоянные категории КЕБ с замком 🔒 сохраняются всегда.
+
+Формат файла cashback_data.js:
+  window.MONTHLY_DATA = {
+    period: "2026-10",
+    label: "Октябрь 2026",
+    version: "2026-10-v1",
+    records: [
+      {
+        bank: "Т-Банк",
+        owner: "Денис",
+        category: "Такси",
+        percent: 5,
+        note: "",
+        period: "2026-10",
+        validFrom: "2026-10-01",
+        validTo: "2026-10-03"
+      }
+    ]
+  };
+
+Как обновлять каждый месяц:
+  1. Скопируй два текущих текстовых списка категорий в любой AI.
+  2. Попроси AI преобразовать их в формат cashback_data.js.
+  3. Проверь владельцев, банки, проценты и примечания.
+  4. Замени в репозитории GitHub только файл cashback_data.js.
+  5. Внутри файла измени period, label и version. Например:
+       period: "2026-11"
+       label: "Ноябрь 2026"
+       version: "2026-11-v1"
+  6. Открой приложение онлайн один раз — оно скачает новый файл.
+  7. После этого приложение будет работать с данными офлайн.
+
+Важно:
+  - Не меняй каждый месяц cashback_navigator.html.
+  - Не добавляй постоянные КЕБ в cashback_data.js — они уже встроены
+    в HTML и автоматически сохраняются.
+  - Внешний файл должен соответствовать текущему месяцу телефона.
+  - Если period старый, приложение его не применит.
+  - version увеличивай при любом обновлении данных.
+  - Для ограниченных предложений обязательно добавляй validFrom и/или
+    validTo в формате YYYY-MM-DD. Границы включаются: в validTo категория
+    ещё действует, а со следующего дня исчезает из поиска.
+  - Если дата указана только в note, приложение постарается распознать
+    конструкции "01.10–03.10", "с 01.10 до 03.10" и "до 31.12", но
+    надёжнее всегда передавать validFrom/validTo.
+
+Для текущего октября 2026 уже подготовлен cashback_data.js из файлов
+"Октябрь 2026/октябрь Денис 2026.txt" и "Октябрь 2026/октябрь Саша 2026.txt".
+
