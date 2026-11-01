@@ -517,15 +517,7 @@ window.MONTHLY_DATA = {
       "note": "",
       "period": "2026-11"
     },
-    {
-      "bank": "ПСБ (Orange Premium Club)",
-      "owner": "Денис",
-      "category": "Кафе, рестораны, фастфуд",
-      "percent": 10,
-      "note": "",
-      "period": "2026-11"
-    },
-    {
+       {
       "bank": "БСПБ (ЯРКО)",
       "owner": "Денис",
       "category": "Спорт",
