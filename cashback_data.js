@@ -526,14 +526,6 @@ window.MONTHLY_DATA = {
       "period": "2026-11"
     },
     {
-      "bank": "ПСБ (Orange Premium Club)",
-      "owner": "Денис",
-      "category": "Отели и билеты",
-      "percent": 5,
-      "note": "",
-      "period": "2026-11"
-    },
-    {
       "bank": "БСПБ (ЯРКО)",
       "owner": "Денис",
       "category": "Спорт",
